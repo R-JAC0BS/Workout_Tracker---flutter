@@ -414,14 +414,12 @@ class _TrainingScreenState extends State<TrainingScreen> {
                             },
                           )
                       ],
-                     
                   );
-
                 },
               ),
-            
             ),
           ),
+          const SizedBox(height: 80),
         ],
       ),
       floatingActionButton: Container(

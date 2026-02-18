@@ -214,6 +214,7 @@ class _ExerciseScreenWidgetState extends State<ExerciseScreenWidget> {
                 ),
               ),
             ),
+            const SizedBox(height: 80),
           ],
         ),
       floatingActionButton: Container(

@@ -17,6 +17,7 @@ class ExerciseStatsScreen extends StatefulWidget {
 
 class _ExerciseStatsScreenState extends State<ExerciseStatsScreen> {
   int _refreshKey = 0;
+  String _selectedPeriod = 'Mês'; // Semana, Mês, Ano, Tudo
 
   void _refresh() {
     setState(() {
@@ -24,12 +25,44 @@ class _ExerciseStatsScreenState extends State<ExerciseStatsScreen> {
     });
   }
 
+  void _changePeriod(String period) {
+    setState(() {
+      _selectedPeriod = period;
+    });
+  }
+
+  List<Map<String, dynamic>> _filterByPeriod(List<Map<String, dynamic>> logs) {
+    if (_selectedPeriod == 'Tudo') return logs;
+
+    final now = DateTime.now();
+    DateTime cutoffDate;
+
+    switch (_selectedPeriod) {
+      case 'Semana':
+        cutoffDate = now.subtract(const Duration(days: 7));
+        break;
+      case 'Mês':
+        cutoffDate = now.subtract(const Duration(days: 30));
+        break;
+      case 'Ano':
+        cutoffDate = now.subtract(const Duration(days: 365));
+        break;
+      default:
+        return logs;
+    }
+
+    return logs.where((log) {
+      final logDate = DateTime.parse(log['date'] as String);
+      return logDate.isAfter(cutoffDate);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBarWidget(text: widget.exercicioNome),
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        key: ValueKey(_refreshKey),
+        key: ValueKey('$_refreshKey-$_selectedPeriod'),
         future: LogData.getLogsGroupedByDate(widget.exercicioNome),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -41,8 +74,9 @@ class _ExerciseStatsScreenState extends State<ExerciseStatsScreen> {
           }
 
           final logs = snapshot.data!;
+          final filteredLogs = _filterByPeriod(logs);
 
-          if (logs.isEmpty) {
+          if (filteredLogs.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -82,16 +116,57 @@ class _ExerciseStatsScreenState extends State<ExerciseStatsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildChart(logs, 'Peso Máximo (kg)', 'max_peso'),
+                  _buildPeriodSelector(),
+                  const SizedBox(height: 16),
+                  _buildChart(filteredLogs, 'Peso Máximo (kg)', 'max_peso'),
                   const SizedBox(height: 24),
-                  _buildChart(logs, 'Volume Total (kg)', 'volume'),
+                  _buildChart(filteredLogs, 'Volume Total (kg)', 'volume'),
                   const SizedBox(height: 24),
-                  _buildLogsList(logs),
+                  _buildLogsList(filteredLogs),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildPeriodSelector() {
+    final periods = ['Semana', 'Mês', 'Ano', 'Tudo'];
+    
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color.fromRGBO(30, 30, 30, 100),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: periods.map((period) {
+          final isSelected = _selectedPeriod == period;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => _changePeriod(period),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.red : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  period,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.grey.shade600,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

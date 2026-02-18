@@ -546,6 +546,7 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),

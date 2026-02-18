@@ -637,9 +637,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                   );
                 }
               ),
-              Container(
-                height: 60,
-              )
+              const SizedBox(height: 80),
             ],
           ),
         ),

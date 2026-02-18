@@ -117,4 +117,44 @@ class LogData {
     final db = await DatabaseService.getDatabase();
     return await db.delete('logs');
   }
+
+  /// Adiciona dados fictícios para teste (últimos 30 dias)
+  static Future<void> addFakeData(String exercicioNome) async {
+    final db = await DatabaseService.getDatabase();
+    
+    // Garante que a tabela existe
+    await DatabaseService.ensureLogsTableExists();
+    
+    final now = DateTime.now();
+    
+    // Adiciona dados dos últimos 30 dias (com alguns dias sem treino)
+    for (int i = 29; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      
+      // Pula alguns dias aleatoriamente (simula dias de descanso)
+      if (i % 3 == 0 || i % 7 == 0) continue;
+      
+      // Progressão de peso: começa com 20kg e aumenta gradualmente
+      final basePeso = 20.0 + (29 - i) * 0.5;
+      
+      // Adiciona 3-4 séries por dia
+      final numSeries = 3 + (i % 2);
+      
+      for (int serie = 0; serie < numSeries; serie++) {
+        // Varia o peso um pouco entre as séries
+        final peso = basePeso + (serie * 2.5);
+        // Varia as repetições entre 8-12
+        final repeticoes = 8 + (serie % 5);
+        
+        await db.insert('logs', {
+          'exercicio_nome': exercicioNome,
+          'peso': peso,
+          'repeticoes': repeticoes,
+          'data': date.toIso8601String(),
+        });
+      }
+    }
+    
+    print('Dados fictícios adicionados para $exercicioNome');
+  }
 }

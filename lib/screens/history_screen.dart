@@ -10,11 +10,23 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
+  int _refreshKey = 0;
+
+  @override
+  void didUpdateWidget(HistoryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Força rebuild quando a tela é reativada
+    setState(() {
+      _refreshKey++;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBarWidget(text: 'Histórico', showBackButton: false),
       body: FutureBuilder<List<String>>(
+        key: ValueKey(_refreshKey),
         future: LogData.getAllExerciciosWithLogs(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -60,8 +72,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: exercicios.length,
+            itemCount: exercicios.length + 1,
             itemBuilder: (context, index) {
+              // Adiciona espaçamento no final
+              if (index == exercicios.length) {
+                return const SizedBox(height: 80);
+              }
+              
               final exercicioNome = exercicios[index];
               
               return FutureBuilder<List<Map<String, dynamic>>>(

@@ -353,8 +353,13 @@ class _StatsScreenState extends State<StatsScreen> with AutomaticKeepAliveClient
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: exerciciosFiltrados.length,
+            itemCount: exerciciosFiltrados.length + 1,
             itemBuilder: (context, index) {
+              // Adiciona espaçamento no final
+              if (index == exerciciosFiltrados.length) {
+                return const SizedBox(height: 80);
+              }
+              
               final exercicio = exerciciosFiltrados[index];
         
               return FutureBuilder<List<dynamic>>(
