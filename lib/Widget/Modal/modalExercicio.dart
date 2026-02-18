@@ -3,8 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:workout_tracker/data/database.dart';
 
-class ModalDayWidget extends StatelessWidget {
-  const ModalDayWidget({super.key, required this.groupId});
+class ModalexercicioWidget extends StatelessWidget {
+  const ModalexercicioWidget({super.key, required this.groupId});
   final int groupId;
 
 
@@ -27,7 +27,7 @@ class ModalDayWidget extends StatelessWidget {
 
         title: const Align(
           alignment: Alignment.centerLeft,
-          child: Text("Grupo muscular", style: TextStyle(color: Colors.white)),
+          child: Text("Exercicio", style: TextStyle(color: Colors.white)),
         ),
 
         content: SizedBox(
@@ -40,8 +40,9 @@ class ModalDayWidget extends StatelessWidget {
                 controller: controller,
                 style: TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: 'ex : costas, biceps...',
+                  labelText: 'ex : puxada alta, remada...',
                   labelStyle: TextStyle(color: Colors.grey.shade400),
+                  focusColor: Colors.white,
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide(
@@ -51,6 +52,7 @@ class ModalDayWidget extends StatelessWidget {
                   ),
 
                   focusedBorder: OutlineInputBorder(
+                    
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide(
                       color: const Color.fromARGB(255, 255, 0, 0),
@@ -64,10 +66,10 @@ class ModalDayWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Adicione o grupo muscular',
+                    'Adicione o exercicio',
                     style: TextStyle(color: Color.fromARGB(255, 121, 118, 118)),
                   ),
-                  const SizedBox(height: 7),
+                  const SizedBox(height: 6),
                   const Text(
                     'Segure para remover posteriormente',
                     style: TextStyle(
@@ -99,7 +101,7 @@ class ModalDayWidget extends StatelessWidget {
                   print(controller.text);
                   final nome = controller.text.trim();
                   if (nome.isEmpty) return;
-                  await DatabaseService.insertGrupo(diaId: groupId, nome: nome);
+                  await DatabaseService.insertExercicio(grupoId: groupId, nome: nome);
                   Navigator.pop(context);
                 },
                 child: const Text('Confirmar', style: TextStyle(color: Colors.white)),
