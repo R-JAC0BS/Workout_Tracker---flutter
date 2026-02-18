@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:workout_tracker/Widget/customAppBar.dart';
-import 'package:workout_tracker/data/database.dart';
-import 'package:workout_tracker/data/logData.dart';
+import 'package:workout_tracker/service/database_service.dart';
+import 'package:workout_tracker/service/log_service.dart';
 
 class SerieScreenWidget extends StatefulWidget {
   final String nome;

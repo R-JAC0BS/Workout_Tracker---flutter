@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:workout_tracker/Widget/customAppBar.dart';
-import 'package:workout_tracker/data/logData.dart';
+import 'package:workout_tracker/service/log_service.dart';
 
 class ExerciseStatsScreen extends StatefulWidget {
   final String exercicioNome;

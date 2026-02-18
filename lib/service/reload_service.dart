@@ -1,5 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:workout_tracker/data/database.dart';
+import 'package:workout_tracker/service/database_service.dart';
 
 class ReloadData {
   static const String _lastResetKey = 'last_reset_date';

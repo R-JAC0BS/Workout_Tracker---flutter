@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:workout_tracker/Widget/Modal/modalExercicio.dart';
 import 'package:workout_tracker/Widget/customAppBar.dart';
-import 'package:workout_tracker/data/database.dart';
+import 'package:workout_tracker/service/database_service.dart';
 import 'package:workout_tracker/screens/series_screen.dart';
 
 class ExerciseScreenWidget extends StatefulWidget {
@@ -216,18 +216,22 @@ class _ExerciseScreenWidgetState extends State<ExerciseScreenWidget> {
             ),
           ],
         ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await showDialog(
-            context: context,
-            builder: (context) {
-              return ModalexercicioWidget(groupId: widget.id);
-            },
-          );
-          _refreshExercicios();
-        },
-        backgroundColor: const Color.fromARGB(255, 255, 0, 0),
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        child: FloatingActionButton(
+          onPressed: () async {
+            await showDialog(
+              context: context,
+              builder: (context) {
+                return ModalexercicioWidget(groupId: widget.id);
+              },
+            );
+            _refreshExercicios();
+          },
+          backgroundColor: const Color.fromARGB(255, 255, 0, 0),
+          elevation: 0,
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
+        ),
       ),
     );
   }

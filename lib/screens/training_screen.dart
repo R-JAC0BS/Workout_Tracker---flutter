@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import 'package:workout_tracker/Widget/Modal/modalDia.dart';
 import 'package:workout_tracker/Widget/customAppBar.dart';
-import 'package:workout_tracker/data/database.dart';
+import 'package:workout_tracker/service/database_service.dart';
 import 'package:workout_tracker/screens/exercise_screen.dart';
 
 class TrainingScreen extends StatefulWidget {
@@ -18,6 +19,26 @@ class _TrainingScreenState extends State<TrainingScreen> {
   
   // Chave para forçar rebuild do FutureBuilder
   int _refreshKey = 0;
+
+  // Lista de ícones para grupos musculares
+  final List<IconData> _muscleIcons = [
+    Icons.fitness_center,
+    Icons.sports_gymnastics,
+    Icons.self_improvement,
+    Icons.accessibility_new,
+    Icons.directions_run,
+    Icons.pool,
+    Icons.sports,
+    Icons.rowing,
+    Icons.downhill_skiing,
+    Icons.sports_tennis,
+  ];
+
+  // Função para obter ícone aleatório baseado no ID do grupo
+  IconData _getRandomIcon(int grupoId) {
+    final random = Random(grupoId);
+    return _muscleIcons[random.nextInt(_muscleIcons.length)];
+  }
 
   void _refreshGrupos() {
     setState(() {
@@ -358,8 +379,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
                                               color: const Color.fromARGB(121, 60, 20, 20),
                                               borderRadius: BorderRadius.circular(12),
                                             ),
-                                            child: const Icon(
-                                              Icons.fitness_center,
+                                            child: Icon(
+                                              _getRandomIcon(grupos[i]['id'] as int),
                                               color: Color.fromARGB(255, 255, 0, 0),
                                               size: 30,
                                             ),
@@ -403,21 +424,25 @@ class _TrainingScreenState extends State<TrainingScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await showDialog(
-            context: context,
-            builder: (context) {
-              return ModalDayWidget(
-                groupId: widget.diaId,
-              );
-            },
-          );
-          // Atualiza a lista após fechar o modal
-          _refreshGrupos();
-        },
-        backgroundColor: const Color.fromARGB(255, 255, 0, 0),
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        child: FloatingActionButton(
+          onPressed: () async {
+            await showDialog(
+              context: context,
+              builder: (context) {
+                return ModalDayWidget(
+                  groupId: widget.diaId,
+                );
+              },
+            );
+            // Atualiza a lista após fechar o modal
+            _refreshGrupos();
+          },
+          backgroundColor: const Color.fromARGB(255, 255, 0, 0),
+          elevation: 0,
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
+        ),
       ),
     );
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:workout_tracker/Widget/customAppBar.dart';
-import 'package:workout_tracker/data/logData.dart';
+import 'package:workout_tracker/service/log_service.dart';
 import 'package:workout_tracker/screens/exercise_stats_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 

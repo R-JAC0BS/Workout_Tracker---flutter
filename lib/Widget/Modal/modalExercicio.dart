@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:workout_tracker/data/database.dart';
+import 'package:workout_tracker/service/database_service.dart';
 
 class ModalexercicioWidget extends StatelessWidget {
   const ModalexercicioWidget({super.key, required this.groupId});

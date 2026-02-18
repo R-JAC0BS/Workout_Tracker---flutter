@@ -1,4 +1,4 @@
-import 'package:workout_tracker/data/database.dart';
+import 'package:workout_tracker/service/database_service.dart';
 
 /// Script para resetar o banco de dados
 /// Use apenas em desenvolvimento!
