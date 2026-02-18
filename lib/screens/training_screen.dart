@@ -69,9 +69,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   // Método para determinar o nível de volume
   String _getVolumeLevel(int totalSeries) {
-    if (totalSeries >= 26) return 'High';
-    if (totalSeries >= 20) return 'Medium';
-    return 'Low';
+    if (totalSeries >= 26) return 'Alto';
+    if (totalSeries >= 20) return 'Médio';
+    return 'Baixo';
   }
 
   @override
@@ -113,12 +113,12 @@ class _TrainingScreenState extends State<TrainingScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      // Estimated Duration
+                      // Duração estimada
                       Expanded(
                         child: Column(
                           children: [
                             Text(
-                              'Estimated Duration',
+                              'Duração estimada',
                               style: TextStyle(
                                 color: Colors.grey.shade400,
                                 fontSize: 12,
@@ -158,7 +158,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                         width: 1,
                         color: Colors.grey.shade700,
                       ),
-                      // Exercises
+                      // Exercícios
                       Expanded(
                         child: FutureBuilder<int>(
                           future: _getTotalExercicios(),
@@ -168,7 +168,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                             return Column(
                               children: [
                                 Text(
-                                  'Exercises',
+                                  'Exercícios',
                                   style: TextStyle(
                                     color: Colors.grey.shade400,
                                     fontSize: 12,
@@ -248,7 +248,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 future: DatabaseService.getGrupos(widget.diaId),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
-                    return const Center(child: Text("Carregando"));
+                    return const Center(child: Text("Carregando..."));
                   }
                   final grupos = snapshot.data!;
                 
@@ -258,7 +258,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.only(left: 16, bottom: 8),
-                          child: Text('TARGET MUSCLES',
+                          child: Text('MÚSCULOS ALVO',
                           style: TextStyle(
                             color: const Color.fromARGB(255, 119, 119, 119),
                             fontSize: 15,
@@ -373,7 +373,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                                             ),
                                           ),
                                           subtitle: Text(
-                                            '$numExercicios ${numExercicios == 1 ? 'exercise' : 'exercises'} • $totalSeries ${totalSeries == 1 ? 'set' : 'sets'}',
+                                            '$numExercicios ${numExercicios == 1 ? 'exercício' : 'exercícios'} • $totalSeries ${totalSeries == 1 ? 'série' : 'séries'}',
                                             style: const TextStyle(
                                               color: Color.fromRGBO(149, 156, 167, 100),
                                               fontSize: 14,

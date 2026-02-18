@@ -27,7 +27,7 @@ class ModalexercicioWidget extends StatelessWidget {
 
         title: const Align(
           alignment: Alignment.centerLeft,
-          child: Text("Exercicio", style: TextStyle(color: Colors.white)),
+          child: Text("Exercício", style: TextStyle(color: Colors.white)),
         ),
 
         content: SizedBox(
@@ -40,7 +40,7 @@ class ModalexercicioWidget extends StatelessWidget {
                 controller: controller,
                 style: TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: 'ex : puxada alta, remada...',
+                  labelText: 'ex: puxada alta, remada...',
                   labelStyle: TextStyle(color: Colors.grey.shade400),
                   focusColor: Colors.white,
                   enabledBorder: OutlineInputBorder(
@@ -66,7 +66,7 @@ class ModalexercicioWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Adicione o exercicio',
+                    'Adicione o exercício',
                     style: TextStyle(color: Color.fromARGB(255, 121, 118, 118)),
                   ),
                   const SizedBox(height: 6),

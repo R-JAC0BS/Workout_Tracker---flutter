@@ -40,7 +40,7 @@ class ModalDayWidget extends StatelessWidget {
                 controller: controller,
                 style: TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: 'ex : costas, biceps...',
+                  labelText: 'ex: costas, bíceps...',
                   labelStyle: TextStyle(color: Colors.grey.shade400),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),

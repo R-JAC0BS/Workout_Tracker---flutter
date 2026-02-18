@@ -39,7 +39,7 @@ class DatabaseService {
 
     _database = await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onConfigure: (db) async {
         // Ativa as foreign keys
         await db.execute('PRAGMA foreign_keys = ON');
@@ -51,7 +51,8 @@ class DatabaseService {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL,
             descricao TEXT,
-            is_completed INTEGER NOT NULL DEFAULT 0
+            is_completed INTEGER NOT NULL DEFAULT 0,
+            is_cardio INTEGER NOT NULL DEFAULT 0
           );
         ''');
 
@@ -97,7 +98,7 @@ class DatabaseService {
         // Pré-popular os 7 dias da semana
         final dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
         for (final dia in dias) {
-          await db.insert('dias', {'nome': dia, 'descricao': '', 'is_completed': 0});
+          await db.insert('dias', {'nome': dia, 'descricao': '', 'is_completed': 0, 'is_cardio': 0});
         }
       },
       onUpgrade: (db, oldVersion, newVersion) async {
@@ -133,6 +134,14 @@ class DatabaseService {
             ''');
           } catch (e) {
             // Tabela já existe
+          }
+        }
+        if (oldVersion < 5) {
+          // Adicionar campo is_cardio
+          try {
+            await db.execute('ALTER TABLE dias ADD COLUMN is_cardio INTEGER NOT NULL DEFAULT 0');
+          } catch (e) {
+            // Coluna já existe
           }
         }
       },
@@ -301,6 +310,17 @@ class DatabaseService {
     );
   }
 
+  // Função para atualizar status de cardio do dia
+  static Future<int> updateDiaCardio(int diaId, bool isCardio) async {
+    final db = await getDatabase();
+    return await db.update(
+      'dias',
+      {'is_cardio': isCardio ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [diaId],
+    );
+  }
+
   // Função para buscar os 3 primeiros exercícios de um dia
   static Future<List<String>> getFirst3ExerciciosFromDia(int diaId) async {
     final db = await getDatabase();
@@ -399,5 +419,21 @@ class DatabaseService {
     
     // Se chegou aqui, todas as séries de todos os exercícios estão completas
     await markDiaAsCompleted(diaId, true);
+  }
+
+  // Função para buscar o nome do grupo muscular a partir do exercício
+  static Future<String> getGrupoMuscularFromExercicio(int exercicioId) async {
+    final db = await getDatabase();
+    final result = await db.rawQuery('''
+      SELECT grupos.nome 
+      FROM grupos 
+      INNER JOIN exercicios ON grupos.id = exercicios.grupo_id 
+      WHERE exercicios.id = ?
+    ''', [exercicioId]);
+    
+    if (result.isNotEmpty) {
+      return result.first['nome'] as String;
+    }
+    return 'Não definido';
   }
 }

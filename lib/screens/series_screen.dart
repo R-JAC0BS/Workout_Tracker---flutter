@@ -36,6 +36,78 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
       appBar: AppBarWidget(text: widget.nome),
       body: Column(
         children: [
+          // Informações superiores: PR e Grupo Muscular
+          FutureBuilder<List<dynamic>>(
+            future: Future.wait([
+              LogData.getMaxPeso(widget.nome),
+              DatabaseService.getGrupoMuscularFromExercicio(widget.exercicioId),
+            ]),
+            builder: (context, snapshot) {
+              final prPeso = snapshot.hasData ? snapshot.data![0] as double : 0.0;
+              final grupoMuscular = snapshot.hasData ? snapshot.data![1] as String : 'Carregando...';
+              
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // PR (Recorde Pessoal) - Lado Esquerdo (sem caixa)
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.emoji_events,
+                          color: const Color.fromARGB(255, 255, 0, 0),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'PR',
+                              style: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              '${prPeso.toStringAsFixed(1)} kg',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    // Grupo Muscular - Lado Direito (caixa compacta)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color.fromRGBO(30, 30, 30, 100),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color.fromRGBO(50, 50, 50, 100),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        grupoMuscular,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           // Caixa de Volume Total
           FutureBuilder<List<Map<String, dynamic>>>(
             key: ValueKey(_refreshKey),
@@ -106,7 +178,7 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
                 Expanded(
                   flex: 1,
                   child: Text(
-                    'SET',
+                    'SÉRIE',
                     style: TextStyle(
                       color: Colors.grey.shade500,
                       fontSize: 14,
@@ -462,7 +534,7 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
                             Icon(Icons.add, color: Colors.grey.shade400, size: 24),
                             const SizedBox(width: 8),
                             Text(
-                              'Add Set',
+                              'Adicionar série',
                               style: TextStyle(
                                 color: Colors.grey.shade400,
                                 fontSize: 18,

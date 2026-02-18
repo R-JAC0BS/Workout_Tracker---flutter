@@ -5,9 +5,15 @@ import 'package:workout_tracker/data/database.dart';
 import 'package:workout_tracker/service/reloadData.dart';
 import 'package:workout_tracker/screens/training_screen.dart';
 import 'package:workout_tracker/screens/stats_screen.dart';
+import 'package:workout_tracker/screens/history_screen.dart';
+import 'package:workout_tracker/utils/reset_database.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // ATENÇÃO: Comente a linha abaixo após o primeiro uso para não perder seus dados!
+  // await resetDatabase();
+  
   await DatabaseService.getDatabase();
   
   // Garante que a tabela de logs existe
@@ -25,7 +31,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Rastreador de Treinos',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color.fromRGBO(18, 18, 18, 100),
@@ -57,9 +63,9 @@ class _MainNavigatorState extends State<MainNavigator> {
             index: _currentIndex,
             children: [
               const TrainingWidget(),
-              const PlaceholderScreen(title: 'History'),
+              const HistoryScreen(),
               StatsScreen(key: ValueKey(_statsRefreshKey)),
-              const PlaceholderScreen(title: 'Me'),
+              const PlaceholderScreen(title: 'Eu'),
             ],
           ),
           Positioned(
@@ -126,7 +132,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBarWidget(text: 'Divisao de treino', showBackButton: false),
+      appBar: AppBarWidget(text: 'Divisão de treino', showBackButton: false),
       body: SingleChildScrollView(
         child: Container(
 
@@ -143,7 +149,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                 future: DatabaseService.getDias(), 
                 builder: (context,snapshot){
                   if (!snapshot.hasData){
-                    return const Text("Carregando");
+                    return const Text("Carregando...");
                   }
                   final dias = snapshot.data!;
                   
@@ -156,7 +162,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       
-                      // Weekly Goal Card atualizado
+                      // Card de meta semanal atualizado
                       Container(
                         padding: const EdgeInsets.all(19),
                         decoration: BoxDecoration(
@@ -185,7 +191,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  '$diasCompletados / $totalDias completo',
+                                  '$diasCompletados / $totalDias completos',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 25,
@@ -194,7 +200,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                                 ),
                               ],
                             ),
-                            // Circular Progress
+                            // Progresso circular
                             Stack(
                               alignment: Alignment.center,
                               children: [
@@ -236,7 +242,25 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                       const SizedBox(height: 12),
                       // Lista de dias
                       ...dias.map((dia) {
-                      final isCompleted = dia['is_completed'] == 1;
+                      return FutureBuilder<void>(
+                        future: DatabaseService.checkAndUpdateDiaStatus(dia['id']),
+                        builder: (context, statusSnapshot) {
+                          // Aguarda a verificação do status antes de continuar
+                          if (statusSnapshot.connectionState != ConnectionState.done) {
+                            return const SizedBox.shrink();
+                          }
+                          
+                          return FutureBuilder<Map<String, dynamic>>(
+                            future: DatabaseService.getDatabase().then((db) => 
+                              db.query('dias', where: 'id = ?', whereArgs: [dia['id']]).then((result) => result.first)
+                            ),
+                            builder: (context, diaSnapshot) {
+                              if (!diaSnapshot.hasData) {
+                                return const SizedBox.shrink();
+                              }
+                              
+                              final diaAtualizado = diaSnapshot.data!;
+                              final isCompleted = diaAtualizado['is_completed'] == 1;
                       
                       // Determinar o dia atual da semana (1 = Segunda, 7 = Domingo)
                       final hoje = DateTime.now().weekday;
@@ -265,7 +289,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                             ? 'Nenhum exercício' 
                             : exercicios.join(', ') + (exercicios.length >= 3 ? '...' : '');
                           
-                          // Formatar volume (converter para lbs se necessário)
+                          // Formatar volume (converter para kg se necessário)
                           final volumeFormatado = volumeTotal > 0 
                             ? '${volumeTotal.toStringAsFixed(0)} kg Vol' 
                             : '0 kg Vol';
@@ -291,7 +315,170 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                                   ),
                                 ),
                               ),
-                              child: ElevatedButton(
+                              child: diaAtualizado['is_cardio'] == 1
+                                ? // Layout para dia de cardio
+                                  Container(
+                                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              dia['nome'].toUpperCase(),
+                                              style: TextStyle(
+                                                color: borderColor, 
+                                                fontSize: 16, 
+                                                fontWeight: FontWeight.bold
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: Icon(
+                                                Icons.edit,
+                                                color: Color.fromRGBO(149, 156, 167, 100),
+                                                size: 20,
+                                              ),
+                                              onPressed: () async {
+                                                final controller = TextEditingController(
+                                                  text: dia['descricao'] ?? ''
+                                                );
+                                                bool isCardio = diaAtualizado['is_cardio'] == 1;
+                                                
+                                                await showDialog(
+                                                  context: context,
+                                                  builder: (context) => StatefulBuilder(
+                                                    builder: (context, setDialogState) => AlertDialog(
+                                                      backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
+                                                      title: Text(
+                                                        'Editar Dia',
+                                                        style: TextStyle(color: Colors.white),
+                                                      ),
+                                                      content: Column(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          TextField(
+                                                            controller: controller,
+                                                            maxLength: 30,
+                                                            style: TextStyle(color: Colors.white),
+                                                            decoration: InputDecoration(
+                                                              labelText: 'Descrição',
+                                                              labelStyle: TextStyle(
+                                                                color: Color.fromRGBO(149, 156, 167, 100)
+                                                              ),
+                                                              hintText: 'Digite a descrição',
+                                                              hintStyle: TextStyle(
+                                                                color: Color.fromRGBO(149, 156, 167, 100)
+                                                              ),
+                                                              enabledBorder: UnderlineInputBorder(
+                                                                borderSide: BorderSide(
+                                                                  color: Color.fromRGBO(149, 156, 167, 100)
+                                                                ),
+                                                              ),
+                                                              focusedBorder: UnderlineInputBorder(
+                                                                borderSide: BorderSide(
+                                                                  color: Color.fromARGB(255, 255, 0, 0)
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(height: 20),
+                                                          Row(
+                                                            children: [
+                                                              Checkbox(
+                                                                value: isCardio,
+                                                                activeColor: Color.fromARGB(255, 255, 0, 0),
+                                                                onChanged: (value) {
+                                                                  setDialogState(() {
+                                                                    isCardio = value ?? false;
+                                                                  });
+                                                                },
+                                                              ),
+                                                              Text(
+                                                                'Dia de Cardio',
+                                                                style: TextStyle(
+                                                                  color: Colors.white,
+                                                                  fontSize: 16,
+                                                                ),
+                                                              ),
+                                                              const SizedBox(width: 8),
+                                                              Icon(
+                                                                Icons.directions_run,
+                                                                color: isCardio 
+                                                                  ? Color.fromARGB(255, 255, 0, 0)
+                                                                  : Color.fromRGBO(149, 156, 167, 100),
+                                                                size: 24,
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () => Navigator.pop(context),
+                                                          child: Text(
+                                                            'Cancelar',
+                                                            style: TextStyle(
+                                                              color: Color.fromRGBO(149, 156, 167, 100)
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        TextButton(
+                                                          onPressed: () async {
+                                                            await DatabaseService.updateDiaDescricao(
+                                                              dia['id'],
+                                                              controller.text
+                                                            );
+                                                            await DatabaseService.updateDiaCardio(
+                                                              dia['id'],
+                                                              isCardio
+                                                            );
+                                                            Navigator.pop(context);
+                                                            _refreshDias();
+                                                          },
+                                                          child: Text(
+                                                            'Salvar',
+                                                            style: TextStyle(
+                                                              color: Color.fromARGB(255, 255, 0, 0)
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          
+                                          children: [
+                                            Icon(
+                                              Icons.directions_run,
+                                              color: Color.fromARGB(255, 70, 70, 70),
+                                              size: 45,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                'Descanso & Cardio',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : // Layout normal para dia de treino
+                                  ElevatedButton(
                                 
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
@@ -344,63 +531,109 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                                                 final controller = TextEditingController(
                                                   text: dia['descricao'] ?? ''
                                                 );
+                                                bool isCardio = diaAtualizado['is_cardio'] == 1;
                                                 
                                                 await showDialog(
                                                   context: context,
-                                                  builder: (context) => AlertDialog(
-                                                    backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
-                                                    title: Text(
-                                                      'Editar Descrição',
-                                                      style: TextStyle(color: Colors.white),
+                                                  builder: (context) => StatefulBuilder(
+                                                    builder: (context, setDialogState) => AlertDialog(
+                                                      backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
+                                                      title: Text(
+                                                        'Editar Dia',
+                                                        style: TextStyle(color: Colors.white),
+                                                      ),
+                                                      content: Column(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          TextField(
+                                                            controller: controller,
+                                                            maxLength: 30,
+                                                            style: TextStyle(color: Colors.white),
+                                                            decoration: InputDecoration(
+                                                              labelText: 'Descrição',
+                                                              labelStyle: TextStyle(
+                                                                color: Color.fromRGBO(149, 156, 167, 100)
+                                                              ),
+                                                              hintText: 'Digite a descrição',
+                                                              hintStyle: TextStyle(
+                                                                color: Color.fromRGBO(149, 156, 167, 100)
+                                                              ),
+                                                              enabledBorder: UnderlineInputBorder(
+                                                                borderSide: BorderSide(
+                                                                  color: Color.fromRGBO(149, 156, 167, 100)
+                                                                ),
+                                                              ),
+                                                              focusedBorder: UnderlineInputBorder(
+                                                                borderSide: BorderSide(
+                                                                  color: Color.fromARGB(255, 255, 0, 0)
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(height: 20),
+                                                          Row(
+                                                            children: [
+                                                              Checkbox(
+                                                                value: isCardio,
+                                                                activeColor: Color.fromARGB(255, 255, 0, 0),
+                                                                onChanged: (value) {
+                                                                  setDialogState(() {
+                                                                    isCardio = value ?? false;
+                                                                  });
+                                                                },
+                                                              ),
+                                                              Text(
+                                                                'Dia de Cardio',
+                                                                style: TextStyle(
+                                                                  color: Colors.white,
+                                                                  fontSize: 16,
+                                                                ),
+                                                              ),
+                                                              const SizedBox(width: 8),
+                                                              Icon(
+                                                                Icons.directions_run,
+                                                                color: isCardio 
+                                                                  ? Color.fromARGB(255, 255, 0, 0)
+                                                                  : Color.fromRGBO(149, 156, 167, 100),
+                                                                size: 24,
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () => Navigator.pop(context),
+                                                          child: Text(
+                                                            'Cancelar',
+                                                            style: TextStyle(
+                                                              color: Color.fromRGBO(149, 156, 167, 100)
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        TextButton(
+                                                          onPressed: () async {
+                                                            await DatabaseService.updateDiaDescricao(
+                                                              dia['id'],
+                                                              controller.text
+                                                            );
+                                                            await DatabaseService.updateDiaCardio(
+                                                              dia['id'],
+                                                              isCardio
+                                                            );
+                                                            Navigator.pop(context);
+                                                            _refreshDias();
+                                                          },
+                                                          child: Text(
+                                                            'Salvar',
+                                                            style: TextStyle(
+                                                              color: Color.fromARGB(255, 255, 0, 0)
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
-                                                    content: TextField(
-                                                      controller: controller,
-                                                      maxLength: 30,
-                                                      style: TextStyle(color: Colors.white),
-                                                      decoration: InputDecoration(
-                                                        hintText: 'Digite a descrição',
-                                                        hintStyle: TextStyle(
-                                                          color: Color.fromRGBO(149, 156, 167, 100)
-                                                        ),
-                                                        enabledBorder: UnderlineInputBorder(
-                                                          borderSide: BorderSide(
-                                                            color: Color.fromRGBO(149, 156, 167, 100)
-                                                          ),
-                                                        ),
-                                                        focusedBorder: UnderlineInputBorder(
-                                                          borderSide: BorderSide(
-                                                            color: Color.fromARGB(255, 255, 0, 0)
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () => Navigator.pop(context),
-                                                        child: Text(
-                                                          'Cancelar',
-                                                          style: TextStyle(
-                                                            color: Color.fromRGBO(149, 156, 167, 100)
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      TextButton(
-                                                        onPressed: () async {
-                                                          await DatabaseService.updateDiaDescricao(
-                                                            dia['id'],
-                                                            controller.text
-                                                          );
-                                                          Navigator.pop(context);
-                                                          _refreshDias();
-                                                        },
-                                                        child: Text(
-                                                          'Salvar',
-                                                          style: TextStyle(
-                                                            color: Color.fromARGB(255, 255, 0, 0)
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
                                                   ),
                                                 );
                                               },
@@ -444,7 +677,9 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                                       Row(
                                         children: [
                                           Icon(
-                                            Icons.fitness_center,
+                                            diaAtualizado['is_cardio'] == 1 
+                                              ? Icons.directions_run 
+                                              : Icons.fitness_center,
                                             color: Color.fromRGBO(149, 156, 167, 100),
                                             size: 18,
                                           ),
@@ -490,7 +725,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Text(
-                                                'Começar Treino',
+                                                'Começar treino',
                                                 style: TextStyle(
                                                   color: Colors.white,
                                                   fontSize: 13,
@@ -520,15 +755,25 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                           );
                         },
                       );
+                            }
+                          );
+                        }
+                      );
                     }).toList(),
                     ],
                   );
                 }
                 
               )
+            
+            ,
+              Container(
+                height: 60,
+              )
             ],
           ),
         ),
+      
       ),
     );
   }

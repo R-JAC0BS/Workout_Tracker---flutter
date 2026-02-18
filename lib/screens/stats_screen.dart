@@ -174,7 +174,7 @@ class _StatsScreenState extends State<StatsScreen> with AutomaticKeepAliveClient
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'O aumento de progressão de carga continua ajuda no aumento de ganho de massa muscular, não deixe de progredir suas cargas',
+                    'A progressão contínua de carga é essencial para aumentar o ganho de massa muscular, não deixe de evoluir seus pesos',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -312,17 +312,7 @@ class _StatsScreenState extends State<StatsScreen> with AutomaticKeepAliveClient
                         ),
                       ),
                       const SizedBox(width: 12),
-                      ElevatedButton(
-                        onPressed: _addTestLog,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey.shade700,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        ),
-                        child: const Text(
-                          'Teste',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
+                      
                     ],
                   ),
                 ],
@@ -413,7 +403,7 @@ class _StatsScreenState extends State<StatsScreen> with AutomaticKeepAliveClient
                                     Expanded(
                                       child: _buildStatItem(
                                         icon: Icons.fitness_center,
-                                        label: 'Peso Máx',
+                                        label: 'Peso Máximo',
                                         value: '${maxPeso.toStringAsFixed(1)} kg',
                                       ),
                                     ),

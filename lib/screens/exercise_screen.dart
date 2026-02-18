@@ -41,7 +41,7 @@ class _ExerciseScreenWidgetState extends State<ExerciseScreenWidget> {
                 },
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: 'Search exercises...',
+                  hintText: 'Buscar exercícios...',
                   hintStyle: TextStyle(color: Colors.grey.shade500),
                   prefixIcon: Icon(Icons.search, color: Colors.grey.shade500),
                   filled: true,
@@ -191,7 +191,7 @@ class _ExerciseScreenWidgetState extends State<ExerciseScreenWidget> {
                                         ),
                                       ),
                                       subtitle: Text(
-                                        '$numSeries ${numSeries == 1 ? 'set' : 'sets'}',
+                                        '$numSeries ${numSeries == 1 ? 'série' : 'séries'}',
                                         style: const TextStyle(
                                           color: Color.fromRGBO(149, 156, 167, 100),
                                           fontSize: 14,
