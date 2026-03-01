@@ -18,6 +18,8 @@ class _StatsScreenState extends State<StatsScreen> with AutomaticKeepAliveClient
   int _refreshKey = 0;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String? _selectedGrupo; // Filtro de grupo muscular
+  bool _showTip = true; // Controla se a dica está visível
 
   @override
   void dispose() {
@@ -122,324 +124,447 @@ class _StatsScreenState extends State<StatsScreen> with AutomaticKeepAliveClient
             ),
           ),
           // Caixa de Dica
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color.fromRGBO(249, 115, 22, 100),
-                    Color.fromRGBO(234, 88, 12, 100),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color.fromRGBO(249, 115, 22, 0.3),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Dica',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Icon(
-                          Icons.emoji_events,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
+          if (_showTip)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color.fromRGBO(249, 115, 22, 100),
+                      Color.fromRGBO(234, 88, 12, 100),
                     ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'A progressão contínua de carga é essencial para aumentar o ganho de massa muscular, não deixe de evoluir seus pesos',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      height: 1.3,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color.fromRGBO(249, 115, 22, 0.3),
+                      blurRadius: 8,
+                      spreadRadius: 1,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => _openUrl('https://www.hipertrofia.org/blog/2014/01/20/como-aplicar-progressao-de-cargas-corretamente/'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.2),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'Dica',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _showTip = false;
+                            });
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'A progressão contínua de carga é essencial para aumentar o ganho de massa muscular, não deixe de evoluir seus pesos',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => _openUrl('https://www.hipertrofia.org/blog/2014/01/20/como-aplicar-progressao-de-cargas-corretamente/'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'VER DETALHES',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
                         ),
                       ),
-                      child: const Text(
-                        'VER DETALHES',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
+          if (_showTip) const SizedBox(height: 16),
+          // Filtros por grupo muscular
+          FutureBuilder<List<String>>(
+            future: LogData.getAllGruposWithLogs(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              
+              final grupos = snapshot.data!;
+              
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Filtrar por grupo',
+                      style: TextStyle(
+                        color: Color.fromRGBO(149, 156, 167, 100),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            // Botão "Todos"
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                label: Text('Todos'),
+                                selected: _selectedGrupo == null,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _selectedGrupo = null;
+                                  });
+                                },
+                                backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
+                                selectedColor: Colors.red,
+                                labelStyle: TextStyle(
+                                  color: _selectedGrupo == null ? Colors.white : Colors.grey.shade400,
+                                  fontWeight: _selectedGrupo == null ? FontWeight.bold : FontWeight.normal,
+                                ),
+                                side: BorderSide(
+                                  color: _selectedGrupo == null ? Colors.red : Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+                            // Botões de grupos
+                            ...grupos.map((grupo) => Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                label: Text(grupo),
+                                selected: _selectedGrupo == grupo,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _selectedGrupo = selected ? grupo : null;
+                                  });
+                                },
+                                backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
+                                selectedColor: Colors.red,
+                                labelStyle: TextStyle(
+                                  color: _selectedGrupo == grupo ? Colors.white : Colors.grey.shade400,
+                                  fontWeight: _selectedGrupo == grupo ? FontWeight.bold : FontWeight.normal,
+                                ),
+                                side: BorderSide(
+                                  color: _selectedGrupo == grupo ? Colors.red : Colors.grey.shade700,
+                                ),
+                              ),
+                            )),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              );
+            },
           ),
-          const SizedBox(height: 16),
           // Lista de exercícios
           Expanded(
             child: FutureBuilder<List<String>>(
               key: ValueKey(_refreshKey),
               future: LogData.getAllExerciciosWithLogs(),
               builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(
-                color: Colors.red,
-              ),
-            );
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 80,
-                    color: Colors.grey.shade700,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Erro ao carregar dados',
-                    style: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${snapshot.error}',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 12,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (!snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(
-                color: Colors.red,
-              ),
-            );
-          }
-
-          final exercicios = snapshot.data!;
-          
-          // Filtrar exercícios pela busca
-          final exerciciosFiltrados = exercicios.where((exercicio) {
-            return exercicio.toLowerCase().contains(_searchQuery);
-          }).toList();
-
-          if (exercicios.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.bar_chart,
-                    size: 80,
-                    color: Colors.grey.shade700,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Nenhum log registrado',
-                    style: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Complete séries para ver estatísticas',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton(
-                        onPressed: _refresh,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        ),
-                        child: const Text(
-                          'Atualizar',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      
-                    ],
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (exerciciosFiltrados.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.search_off,
-                    size: 80,
-                    color: Colors.grey.shade700,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Nenhum exercício encontrado',
-                    style: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tente buscar por outro nome',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: exerciciosFiltrados.length + 1,
-            itemBuilder: (context, index) {
-              // Adiciona espaçamento no final
-              if (index == exerciciosFiltrados.length) {
-                return const SizedBox(height: 80);
-              }
-              
-              final exercicio = exerciciosFiltrados[index];
-        
-              return FutureBuilder<List<dynamic>>(
-                future: Future.wait([
-                  LogData.getMaxPeso(exercicio),
-                  LogData.getVolumeTotalExercicio(exercicio),
-                  LogData.getLogsByExercicio(exercicio),
-                ]),
-                builder: (context, snapshot) {
-                  final maxPeso = snapshot.hasData ? snapshot.data![0] as double : 0.0;
-                  final volumeTotal = snapshot.hasData ? snapshot.data![1] as double : 0.0;
-                  final logs = snapshot.hasData ? snapshot.data![2] as List<Map<String, dynamic>> : [];
-                  
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color.fromRGBO(30, 30, 30, 100),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.grey.shade800
-                          
-                        ),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(10),
-                          onTap: () => _navigateToExerciseStats(exercicio),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  exercicio.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildStatItem(
-                                        icon: Icons.fitness_center,
-                                        label: 'Peso Máximo',
-                                        value: '${maxPeso.toStringAsFixed(1)} kg',
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: _buildStatItem(
-                                        icon: Icons.trending_up,
-                                        label: 'Volume Total',
-                                        value: '${volumeTotal.toStringAsFixed(0)} kg',
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: _buildStatItem(
-                                        icon: Icons.history,
-                                        label: 'Registros',
-                                        value: '${logs.length}',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                    
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.red,
                     ),
                   );
-                },
-              );
-            },
-          );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 80,
+                          color: Colors.grey.shade700,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Erro ao carregar dados',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${snapshot.error}',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.red,
+                    ),
+                  );
+                }
+
+                final exercicios = snapshot.data!;
+                
+                if (exercicios.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.bar_chart,
+                          size: 80,
+                          color: Colors.grey.shade700,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Nenhum log registrado',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Complete séries para ver estatísticas',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: _refresh,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                          child: const Text(
+                            'Atualizar',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                
+                return FutureBuilder<Map<String, String?>>(
+                  future: Future.wait(
+                    exercicios.map((ex) => LogData.getGrupoByExercicioNome(ex))
+                  ).then((grupos) {
+                    return Map.fromIterables(exercicios, grupos);
+                  }),
+                  builder: (context, gruposSnapshot) {
+                    if (!gruposSnapshot.hasData) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: Colors.red),
+                      );
+                    }
+                    
+                    final exerciciosComGrupos = gruposSnapshot.data!;
+                    
+                    // Filtrar exercícios pela busca e pelo grupo selecionado
+                    final exerciciosFiltrados = exercicios.where((exercicio) {
+                      final matchSearch = exercicio.toLowerCase().contains(_searchQuery);
+                      final matchGrupo = _selectedGrupo == null || 
+                                         exerciciosComGrupos[exercicio] == _selectedGrupo;
+                      return matchSearch && matchGrupo;
+                    }).toList();
+
+                    if (exerciciosFiltrados.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 80,
+                              color: Colors.grey.shade700,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Nenhum exercício encontrado',
+                              style: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontSize: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tente buscar por outro nome',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: exerciciosFiltrados.length + 1,
+                      itemBuilder: (context, index) {
+                        // Adiciona espaçamento no final
+                        if (index == exerciciosFiltrados.length) {
+                          return const SizedBox(height: 80);
+                        }
+                        
+                        final exercicio = exerciciosFiltrados[index];
+                        final grupoNome = exerciciosComGrupos[exercicio];
+                  
+                        return FutureBuilder<List<dynamic>>(
+                          future: Future.wait([
+                            LogData.getMaxPeso(exercicio),
+                            LogData.getVolumeTotalExercicio(exercicio),
+                            LogData.getLogsByExercicio(exercicio),
+                          ]),
+                          builder: (context, snapshot) {
+                            final maxPeso = snapshot.hasData ? snapshot.data![0] as double : 0.0;
+                            final volumeTotal = snapshot.hasData ? snapshot.data![1] as double : 0.0;
+                            final logs = snapshot.hasData ? snapshot.data![2] as List<Map<String, dynamic>> : [];
+                            
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color.fromRGBO(30, 30, 30, 100),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.grey.shade800
+                                    
+                                  ),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(10),
+                                    onTap: () => _navigateToExerciseStats(exercicio),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  exercicio.toUpperCase(),
+                                                  style: const TextStyle(
+                                                    color: Colors.red,
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (grupoNome != null)
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey.shade800,
+                                                    borderRadius: BorderRadius.circular(4),
+                                                  ),
+                                                  child: Text(
+                                                    grupoNome,
+                                                    style: TextStyle(
+                                                      color: Colors.grey.shade400,
+                                                      fontSize: 11,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _buildStatItem(
+                                                  icon: Icons.fitness_center,
+                                                  label: 'Peso Máximo',
+                                                  value: '${maxPeso.toStringAsFixed(1)} kg',
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: _buildStatItem(
+                                                  icon: Icons.trending_up,
+                                                  label: 'Volume Total',
+                                                  value: '${volumeTotal.toStringAsFixed(0)} kg',
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: _buildStatItem(
+                                                  icon: Icons.history,
+                                                  label: 'Registros',
+                                                  value: '${logs.length}',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                              
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                );
               },
             ),
           ),

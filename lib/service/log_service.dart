@@ -157,4 +157,45 @@ class LogData {
     
     print('Dados fictícios adicionados para $exercicioNome');
   }
+
+  /// Busca o grupo muscular de um exercício pelo nome
+  static Future<String?> getGrupoByExercicioNome(String exercicioNome) async {
+    final db = await DatabaseService.getDatabase();
+    try {
+      final result = await db.rawQuery('''
+        SELECT grupos.nome 
+        FROM grupos 
+        INNER JOIN exercicios ON grupos.id = exercicios.grupo_id 
+        WHERE exercicios.nome = ?
+        LIMIT 1
+      ''', [exercicioNome]);
+      
+      if (result.isNotEmpty) {
+        return result.first['nome'] as String;
+      }
+      return null;
+    } catch (e) {
+      print('Erro ao buscar grupo do exercício: $e');
+      return null;
+    }
+  }
+
+  /// Busca todos os grupos musculares únicos que têm exercícios com logs
+  static Future<List<String>> getAllGruposWithLogs() async {
+    final db = await DatabaseService.getDatabase();
+    try {
+      final result = await db.rawQuery('''
+        SELECT DISTINCT grupos.nome 
+        FROM grupos 
+        INNER JOIN exercicios ON grupos.id = exercicios.grupo_id 
+        INNER JOIN logs ON exercicios.nome = logs.exercicio_nome
+        ORDER BY grupos.nome ASC
+      ''');
+      
+      return result.map((e) => e['nome'] as String).toList();
+    } catch (e) {
+      print('Erro ao buscar grupos: $e');
+      return [];
+    }
+  }
 }

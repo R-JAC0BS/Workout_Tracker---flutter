@@ -18,16 +18,25 @@ class ExerciseStatsScreen extends StatefulWidget {
 class _ExerciseStatsScreenState extends State<ExerciseStatsScreen> {
   int _refreshKey = 0;
   String _selectedPeriod = 'Mês'; // Semana, Mês, Ano, Tudo
+  int _displayedLogsCount = 10; // Quantidade de logs exibidos
 
   void _refresh() {
     setState(() {
       _refreshKey++;
+      _displayedLogsCount = 10; // Reset ao atualizar
+    });
+  }
+
+  void _loadMore() {
+    setState(() {
+      _displayedLogsCount += 10;
     });
   }
 
   void _changePeriod(String period) {
     setState(() {
       _selectedPeriod = period;
+      _displayedLogsCount = 10; // Reset ao mudar período
     });
   }
 
@@ -308,6 +317,9 @@ class _ExerciseStatsScreenState extends State<ExerciseStatsScreen> {
   }
 
   Widget _buildLogsList(List<Map<String, dynamic>> logs) {
+    final displayedLogs = logs.take(_displayedLogsCount).toList();
+    final hasMore = logs.length > _displayedLogsCount;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -317,16 +329,28 @@ class _ExerciseStatsScreenState extends State<ExerciseStatsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Histórico',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Histórico',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Mostrando ${displayedLogs.length} de ${logs.length}',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          ...logs.map((log) {
+          ...displayedLogs.map((log) {
             final date = log['date'] as String;
             final maxPeso = (log['max_peso'] as num).toDouble();
             final volume = (log['volume'] as num).toDouble();
@@ -377,6 +401,29 @@ class _ExerciseStatsScreenState extends State<ExerciseStatsScreen> {
               ),
             );
           }),
+          if (hasMore) ...[
+            const SizedBox(height: 16),
+            Center(
+              child: ElevatedButton(
+                onPressed: _loadMore,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Carregar mais',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

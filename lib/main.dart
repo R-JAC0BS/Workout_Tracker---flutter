@@ -26,12 +26,21 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Rastreador de Treinos',
+      title: 'GymTracker',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color.fromRGBO(18, 18, 18, 100),
+          brightness: Brightness.dark,
         ),
         scaffoldBackgroundColor: const Color.fromRGBO(18, 18, 18, 100),
+        canvasColor: const Color.fromRGBO(18, 18, 18, 100),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          },
+        ),
       ),
       home: const MainNavigator(),
     );
@@ -45,23 +54,70 @@ class MainNavigator extends StatefulWidget {
   State<MainNavigator> createState() => _MainNavigatorState();
 }
 
-class _MainNavigatorState extends State<MainNavigator> {
+class _MainNavigatorState extends State<MainNavigator> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   int _statsRefreshKey = 0;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 1.0).animate(_fadeController);
+    _fadeController.value = 1.0;
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  void _onTabTapped(int index) async {
+    if (_currentIndex == index) return;
+
+    // Fade out
+    _fadeController.animateTo(0.0, duration: const Duration(milliseconds: 150), curve: Curves.easeOut);
+    
+    // Aguarda o fade out completar
+    await Future.delayed(const Duration(milliseconds: 150));
+    
+    // Troca a tela
+    setState(() {
+      _currentIndex = index;
+      if (index == 2) {
+        _statsRefreshKey++;
+      }
+    });
+
+    // Aguarda 2 frames para garantir que a tela foi construída e renderizada
+    await Future.delayed(const Duration(milliseconds: 100));
+    
+    // Fade in
+    _fadeController.animateTo(1.0, duration: const Duration(milliseconds: 150), curve: Curves.easeIn);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromRGBO(18, 18, 18, 100),
       body: Stack(
         children: [
-          IndexedStack(
-            index: _currentIndex,
-            children: [
-              const TrainingWidget(),
-              const HistoryScreen(),
-              StatsScreen(key: ValueKey(_statsRefreshKey)),
-              const PlaceholderScreen(title: 'Eu'),
-            ],
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: IndexedStack(
+              index: _currentIndex,
+              children: [
+                const TrainingWidget(),
+                const HistoryScreen(),
+                StatsScreen(key: ValueKey(_statsRefreshKey)),
+                const PlaceholderScreen(title: 'Eu'),
+              ],
+            ),
           ),
           Positioned(
             left: 0,
@@ -69,15 +125,7 @@ class _MainNavigatorState extends State<MainNavigator> {
             bottom: 0,
             child: NabBarWidget(
               currentIndex: _currentIndex,
-              onTap: (index) {
-                setState(() {
-                  _currentIndex = index;
-                  // Atualiza a tela Stats quando navegar para ela
-                  if (index == 2) {
-                    _statsRefreshKey++;
-                  }
-                });
-              },
+              onTap: _onTabTapped,
             ),
           ),
         ],

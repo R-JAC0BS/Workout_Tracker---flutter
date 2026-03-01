@@ -209,6 +209,32 @@ class DatabaseService {
     return await db.delete('grupos', where: 'id = ?', whereArgs: [grupoId]);
   }
 
+  // ----------------------
+  // Funções de atualização
+  // ----------------------
+
+  // Atualizar nome do grupo muscular
+  static Future<int> updateGrupoNome(int grupoId, String novoNome) async {
+    final db = await getDatabase();
+    return await db.update(
+      'grupos',
+      {'nome': novoNome},
+      where: 'id = ?',
+      whereArgs: [grupoId],
+    );
+  }
+
+  // Atualizar nome do exercício
+  static Future<int> updateExercicioNome(int exercicioId, String novoNome) async {
+    final db = await getDatabase();
+    return await db.update(
+      'exercicios',
+      {'nome': novoNome},
+      where: 'id = ?',
+      whereArgs: [exercicioId],
+    );
+  }
+
   // Funções de leitura (opcional)
   static Future<List<Map<String, dynamic>>> getDias() async {
     final db = await getDatabase();
@@ -354,7 +380,7 @@ class DatabaseService {
     return 0.0;
   }
 
-  // Função para calcular o tempo estimado de treino (1.5 min por série)
+  // Função para calcular o tempo estimado de treino (2 min por série: 1min30s descanso + 30s execução)
   static Future<int> getTempoEstimadoDia(int diaId) async {
     final db = await getDatabase();
     
@@ -368,7 +394,7 @@ class DatabaseService {
     
     if (result.isNotEmpty && result.first['total_series'] != null) {
       final totalSeries = result.first['total_series'] as int;
-      return (totalSeries * 1.5).round(); // 1.5 minutos por série
+      return (totalSeries * 2).round(); // 2 minutos por série (1min30s descanso + 30s execução)
     }
     return 0;
   }

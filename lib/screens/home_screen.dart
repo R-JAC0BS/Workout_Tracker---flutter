@@ -11,37 +11,79 @@ class TrainingWidget extends StatefulWidget {
 }
 
 class _TrainingWidgetState extends State<TrainingWidget> {
-  int _refreshKey = 0;
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _diasComDados = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarDados();
+  }
+
+  Future<void> _carregarDados() async {
+    setState(() => _isLoading = true);
+    
+    final dias = await DatabaseService.getDias();
+    final diasComDados = <Map<String, dynamic>>[];
+    
+    // Carregar todos os dados de uma vez
+    for (final dia in dias) {
+      await DatabaseService.checkAndUpdateDiaStatus(dia['id']);
+      
+      final db = await DatabaseService.getDatabase();
+      final diaAtualizado = (await db.query('dias', where: 'id = ?', whereArgs: [dia['id']])).first;
+      
+      final exercicios = await DatabaseService.getFirst3ExerciciosFromDia(dia['id']);
+      final volumeTotal = await DatabaseService.getVolumeTotalDia(dia['id']);
+      final tempoEstimado = await DatabaseService.getTempoEstimadoDia(dia['id']);
+      
+      diasComDados.add({
+        ...diaAtualizado,
+        'exercicios': exercicios,
+        'volumeTotal': volumeTotal,
+        'tempoEstimado': tempoEstimado,
+      });
+    }
+    
+    setState(() {
+      _diasComDados = diasComDados;
+      _isLoading = false;
+    });
+  }
 
   void _refreshDias() {
-    setState(() {
-      _refreshKey++;
-    });
+    _carregarDados();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBarWidget(text: 'Divisão de treino', showBackButton: false),
-      body: SingleChildScrollView(
-        child: Container(
-          padding: const EdgeInsets.all(17),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FutureBuilder<List<Map<String,dynamic>>>(
-                key: ValueKey(_refreshKey),
-                future: DatabaseService.getDias(), 
-                builder: (context,snapshot){
-                  if (!snapshot.hasData){
-                    return const Text("Carregando...");
-                  }
-                  final dias = snapshot.data!;
-                  
-                  // Calcular dias completados
-                  final totalDias = dias.length;
-                  final diasCompletados = dias.where((dia) => dia['is_completed'] == 1).length;
-                  final percentual = totalDias > 0 ? diasCompletados / totalDias : 0.0;
+      body: _isLoading
+        ? Center(
+            child: CircularProgressIndicator(
+              color: Color.fromARGB(255, 255, 0, 0),
+            ),
+          )
+        : SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.all(17),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildContent(),
+                  const SizedBox(height: 80),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
+  Widget _buildContent() {
+    final totalDias = _diasComDados.length;
+    final diasCompletados = _diasComDados.where((dia) => dia['is_completed'] == 1).length;
+    final percentual = totalDias > 0 ? diasCompletados / totalDias : 0.0;
                   
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -124,26 +166,11 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                       ),
                       const SizedBox(height: 12),
                       // Lista de dias
-                      ...dias.map((dia) {
-                      return FutureBuilder<void>(
-                        future: DatabaseService.checkAndUpdateDiaStatus(dia['id']),
-                        builder: (context, statusSnapshot) {
-                          // Aguarda a verificação do status antes de continuar
-                          if (statusSnapshot.connectionState != ConnectionState.done) {
-                            return const SizedBox.shrink();
-                          }
-                          
-                          return FutureBuilder<Map<String, dynamic>>(
-                            future: DatabaseService.getDatabase().then((db) => 
-                              db.query('dias', where: 'id = ?', whereArgs: [dia['id']]).then((result) => result.first)
-                            ),
-                            builder: (context, diaSnapshot) {
-                              if (!diaSnapshot.hasData) {
-                                return const SizedBox.shrink();
-                              }
-                              
-                              final diaAtualizado = diaSnapshot.data!;
-                              final isCompleted = diaAtualizado['is_completed'] == 1;
+                      ..._diasComDados.map((dia) {
+                        final isCompleted = dia['is_completed'] == 1;
+                        final exercicios = dia['exercicios'] as List<String>;
+                        final volumeTotal = dia['volumeTotal'] as double;
+                        final tempoEstimado = dia['tempoEstimado'] as int;
                       
                       // Determinar o dia atual da semana (1 = Segunda, 7 = Domingo)
                       final hoje = DateTime.now().weekday;
@@ -157,32 +184,21 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                           ? const Color.fromRGBO(220, 38, 38, 100)
                           : const Color.fromRGBO(100, 100, 100, 100);
                       
-                      return FutureBuilder<List<dynamic>>(
-                        future: Future.wait([
-                          DatabaseService.getFirst3ExerciciosFromDia(dia['id']),
-                          DatabaseService.getVolumeTotalDia(dia['id']),
-                          DatabaseService.getTempoEstimadoDia(dia['id']),
-                        ]),
-                        builder: (context, snapshot) {
-                          final exercicios = snapshot.hasData ? snapshot.data![0] as List<String> : <String>[];
-                          final volumeTotal = snapshot.hasData ? snapshot.data![1] as double : 0.0;
-                          final tempoEstimado = snapshot.hasData ? snapshot.data![2] as int : 0;
-                          
-                          final exerciciosText = exercicios.isEmpty 
-                            ? 'Nenhum exercício' 
-                            : exercicios.join(', ') + (exercicios.length >= 3 ? '...' : '');
-                          
-                          // Formatar volume (converter para kg se necessário)
-                          final volumeFormatado = volumeTotal > 0 
-                            ? '${volumeTotal.toStringAsFixed(0)} kg Vol' 
-                            : '0 kg Vol';
-                          
-                          // Formatar tempo
-                          final tempoFormatado = tempoEstimado > 0
-                            ? tempoEstimado >= 60 
-                              ? '${(tempoEstimado / 60).floor()}h ${tempoEstimado % 60}m'
-                              : '${tempoEstimado}m'
-                            : '0m';
+                      final exerciciosText = exercicios.isEmpty 
+                        ? 'Nenhum exercício' 
+                        : exercicios.join(', ') + (exercicios.length >= 3 ? '...' : '');
+                      
+                      // Formatar volume (converter para kg se necessário)
+                      final volumeFormatado = volumeTotal > 0 
+                        ? '${volumeTotal.toStringAsFixed(0)} kg Vol' 
+                        : '0 kg Vol';
+                      
+                      // Formatar tempo
+                      final tempoFormatado = tempoEstimado > 0
+                        ? tempoEstimado >= 60 
+                          ? '${(tempoEstimado / 60).floor()}h ${tempoEstimado % 60}m'
+                          : '${tempoEstimado}m'
+                        : '0m';
                           
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
@@ -197,7 +213,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                                   ),
                                 ),
                               ),
-                              child: diaAtualizado['is_cardio'] == 1
+                              child: dia['is_cardio'] == 1
                                 ? // Layout para dia de cardio
                                   Container(
                                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -225,7 +241,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                                                 final controller = TextEditingController(
                                                   text: dia['descricao'] ?? ''
                                                 );
-                                                bool isCardio = diaAtualizado['is_cardio'] == 1;
+                                                bool isCardio = dia['is_cardio'] == 1;
                                                 
                                                 await showDialog(
                                                   context: context,
@@ -410,7 +426,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                                                 final controller = TextEditingController(
                                                   text: dia['descricao'] ?? ''
                                                 );
-                                                bool isCardio = diaAtualizado['is_cardio'] == 1;
+                                                bool isCardio = dia['is_cardio'] == 1;
                                                 
                                                 await showDialog(
                                                   context: context,
@@ -517,12 +533,13 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                                                 );
                                               },
                                             ),
-                                            if (isCompleted)
-                                              Icon(
-                                                Icons.check_circle,
-                                                color: const Color.fromRGBO(34, 197, 94, 100),
-                                                size: 24,
-                                              ),
+                                            Icon(
+                                              isCompleted ? Icons.check_circle : Icons.error_outline,
+                                              color: isCompleted 
+                                                ? const Color.fromRGBO(34, 197, 94, 100)
+                                                : Colors.grey,
+                                              size: 24,
+                                            ),
                                           ],
                                         ),
                                       ],
@@ -554,7 +571,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                                       Row(
                                         children: [
                                           Icon(
-                                            diaAtualizado['is_cardio'] == 1 
+                                            dia['is_cardio'] == 1 
                                               ? Icons.directions_run 
                                               : Icons.fitness_center,
                                             color: Color.fromRGBO(149, 156, 167, 100),
@@ -626,22 +643,8 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                               ),
                             ),
                           );
-                        },
-                      );
-                            }
-                          );
-                        }
-                      );
                     }).toList(),
                     ],
                   );
-                }
-              ),
-              const SizedBox(height: 80),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

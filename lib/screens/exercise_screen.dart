@@ -127,48 +127,6 @@ class _ExerciseScreenWidgetState extends State<ExerciseScreenWidget> {
                                       ),
                                     );
                                   },
-                                  onLongPress: () async {
-                                    // Mostrar diálogo de confirmação
-                                    final confirmar = await showDialog<bool>(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
-                                        title: Text(
-                                          'Remover Exercício',
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                        content: Text(
-                                          'Deseja remover "${exerciciosFiltrados[i]['nome']}"?\nTodas as séries serão removidas.',
-                                          style: TextStyle(color: Colors.grey.shade400),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(context, false),
-                                            child: Text(
-                                              'Cancelar',
-                                              style: TextStyle(
-                                                color: Color.fromRGBO(149, 156, 167, 100)
-                                              ),
-                                            ),
-                                          ),
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(context, true),
-                                            child: Text(
-                                              'Remover',
-                                              style: TextStyle(
-                                                color: Color.fromARGB(255, 255, 0, 0)
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                    
-                                    if (confirmar == true) {
-                                      await DatabaseService.deleteExercicio(exerciciosFiltrados[i]['id']);
-                                      _refreshExercicios();
-                                    }
-                                  },
                                   borderRadius: BorderRadius.circular(15),
                                   child: Container(
                                     height: 100,
@@ -197,11 +155,190 @@ class _ExerciseScreenWidgetState extends State<ExerciseScreenWidget> {
                                           fontSize: 14,
                                         ),
                                       ),
-                                      trailing: const Icon(
-                                        Icons.chevron_right,
-                                        color: Colors.grey,
-                                        size: 30,
-                                      ),
+                                      trailing: IconButton(
+                                        icon: Icon(
+                                          Icons.more_vert,
+                                          color: Colors.grey,
+                                          size: 24,
+                                        ),
+                                        onPressed: () async {
+                                          // Mostrar diálogo de edição diretamente
+                                          final controller = TextEditingController(
+                                            text: exerciciosFiltrados[i]['nome']
+                                          );
+                                          
+                                          final resultado = await showDialog<String>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
+                                              title: Text(
+                                                'Editar Exercício',
+                                                style: TextStyle(color: Colors.white),
+                                              ),
+                                              content: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  TextField(
+                                                    controller: controller,
+                                                    autofocus: true,
+                                                    style: TextStyle(color: Colors.white),
+                                                    decoration: InputDecoration(
+                                                      labelText: 'Nome do exercício',
+                                                      labelStyle: TextStyle(
+                                                        color: Color.fromRGBO(149, 156, 167, 100)
+                                                      ),
+                                                      enabledBorder: UnderlineInputBorder(
+                                                        borderSide: BorderSide(
+                                                          color: Color.fromRGBO(149, 156, 167, 100)
+                                                        ),
+                                                      ),
+                                                      focusedBorder: UnderlineInputBorder(
+                                                        borderSide: BorderSide(
+                                                          color: Color.fromARGB(255, 255, 0, 0)
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              actions: [
+                                                Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                  children: [
+                                                    ElevatedButton(
+                                                      onPressed: () => Navigator.pop(context, 'salvar'),
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Color.fromARGB(255, 255, 0, 0),
+                                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius: BorderRadius.circular(4),
+                                                        ),
+                                                      ),
+                                                      child: Text(
+                                                        'Salvar',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 16,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, 'deletar'),
+                                                      child: Text(
+                                                        'Deletar',
+                                                        style: TextStyle(
+                                                          color: Colors.red.shade300,
+                                                          fontSize: 16,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context),
+                                                      child: Text(
+                                                        'Cancelar',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          
+                                          if (resultado == 'salvar' && controller.text.isNotEmpty) {
+                                            await DatabaseService.updateExercicioNome(
+                                              exerciciosFiltrados[i]['id'],
+                                              controller.text
+                                            );
+                                            _refreshExercicios();
+                                          } else if (resultado == 'deletar') {
+                                            // Primeira confirmação de deleção
+                                            final primeiraConfirmacao = await showDialog<bool>(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
+                                                title: Text(
+                                                  'Tem certeza?',
+                                                  style: TextStyle(color: Colors.white),
+                                                ),
+                                                content: Text(
+                                                  'Deseja realmente remover "${exerciciosFiltrados[i]['nome']}"?',
+                                                  style: TextStyle(color: Colors.grey.shade400),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(context, false),
+                                                    child: Text(
+                                                      'Cancelar',
+                                                      style: TextStyle(
+                                                        color: Colors.white
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(context, true),
+                                                    child: Text(
+                                                      'Sim, deletar',
+                                                      style: TextStyle(
+                                                        color: Colors.red
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            
+                                            if (primeiraConfirmacao == true) {
+                                              // Segunda confirmação de deleção
+                                              final segundaConfirmacao = await showDialog<bool>(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
+                                                  title: Text(
+                                                    'Confirmar exclusão',
+                                                    style: TextStyle(color: Colors.white),
+                                                  ),
+                                                  content: Text(
+                                                    'Esta ação não pode ser desfeita.\nTodas as séries serão removidas permanentemente.',
+                                                    style: TextStyle(color: Colors.grey.shade400),
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, false),
+                                                      child: Text(
+                                                        'Cancelar',
+                                                        style: TextStyle(
+                                                          color: Colors.white
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, true),
+                                                      child: Text(
+                                                        'Confirmar exclusão',
+                                                        style: TextStyle(
+                                                          color: Colors.red,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                              
+                                              if (segundaConfirmacao == true) {
+                                                await DatabaseService.deleteExercicio(exerciciosFiltrados[i]['id']);
+                                                _refreshExercicios();
+                                              }
+                                            }
+                                          }
+                                        },
+                                  ),
                                     ),
                                   ),
                                 ),
