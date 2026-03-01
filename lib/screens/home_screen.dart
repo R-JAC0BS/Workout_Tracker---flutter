@@ -13,6 +13,7 @@ class TrainingWidget extends StatefulWidget {
 class _TrainingWidgetState extends State<TrainingWidget> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _diasComDados = [];
+  int _diaSelecionado = DateTime.now().weekday;
 
   @override
   void initState() {
@@ -26,7 +27,6 @@ class _TrainingWidgetState extends State<TrainingWidget> {
     final dias = await DatabaseService.getDias();
     final diasComDados = <Map<String, dynamic>>[];
     
-    // Carregar todos os dados de uma vez
     for (final dia in dias) {
       await DatabaseService.checkAndUpdateDiaStatus(dia['id']);
       
@@ -81,570 +81,796 @@ class _TrainingWidgetState extends State<TrainingWidget> {
   }
 
   Widget _buildContent() {
+    final diaAtual = _diasComDados.firstWhere(
+      (dia) => dia['id'] == _diaSelecionado,
+      orElse: () => _diasComDados.isNotEmpty ? _diasComDados[0] : {},
+    );
+    
+    if (diaAtual.isEmpty) {
+      return Center(
+        child: Text(
+          'Nenhum dia cadastrado',
+          style: TextStyle(color: Colors.white, fontSize: 18),
+        ),
+      );
+    }
+
+    final isCompleted = diaAtual['is_completed'] == 1;
+    final volumeTotal = diaAtual['volumeTotal'] as double;
+    final tempoEstimado = diaAtual['tempoEstimado'] as int;
+    final isCardio = diaAtual['is_cardio'] == 1;
+    
     final totalDias = _diasComDados.length;
     final diasCompletados = _diasComDados.where((dia) => dia['is_completed'] == 1).length;
     final percentual = totalDias > 0 ? diasCompletados / totalDias : 0.0;
-                  
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Card de meta semanal atualizado
-                      Container(
-                        padding: const EdgeInsets.all(19),
-                        decoration: BoxDecoration(
-                          color: const Color.fromRGBO(60, 20, 20, 100),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color.fromARGB(255, 100, 30, 30),
-                            width: 1.3,
-                          ),
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Card de progresso semanal
+        Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Color.fromRGBO(60, 20, 20, 1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Color.fromARGB(255, 100, 30, 30),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TREINOS COMPLETOS',
+                    style: TextStyle(
+                      color: Color.fromARGB(255, 255, 0, 0),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '$diasCompletados / $totalDias completos',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: CircularProgressIndicator(
+                      value: percentual,
+                      strokeWidth: 6,
+                      backgroundColor: Color.fromARGB(255, 80, 30, 30),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color.fromARGB(255, 255, 0, 0),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${(percentual * 100).toInt()}%',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+       
+        const SizedBox(height: 16),
+        
+        // Lista horizontal de dias
+        SizedBox(
+          height: 140,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _diasComDados.length,
+            itemBuilder: (context, index) {
+              final dia = _diasComDados[index];
+              final isSelecionado = dia['id'] == _diaSelecionado;
+              final isDiaCompleto = dia['is_completed'] == 1;
+              final isDiaAtual = dia['id'] == DateTime.now().weekday;
+              
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _diaSelecionado = dia['id'];
+                  });
+                },
+                child: Container(
+                  width: 140,
+                  margin: EdgeInsets.only(right: 12),
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDiaCompleto
+                      ? Color.fromRGBO(34, 197, 94, 1)  // Verde quando completo
+                      : isSelecionado 
+                        ? Color.fromARGB(255, 255, 0, 0)  // Vermelho quando selecionado
+                        : Color.fromRGBO(40, 40, 40, 1),  // Cinza escuro quando não selecionado
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDiaAtual && !isSelecionado && !isDiaCompleto
+                        ? Color.fromARGB(255, 255, 0, 0).withOpacity(0.5)
+                        : Colors.transparent,
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      if (isDiaCompleto)
+                        BoxShadow(
+                          color: Color.fromRGBO(34, 197, 94, 0.4),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                        )
+                      else if (isSelecionado)
+                        BoxShadow(
+                          color: Color.fromARGB(255, 255, 0, 0).withOpacity(0.4),
+                          blurRadius: 12,
+                          spreadRadius: 2,
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            dia['nome'].toString().substring(0, 3).toUpperCase(),
+                            style: TextStyle(
+                              color: (isSelecionado || isDiaCompleto) ? Colors.white : Color.fromRGBO(149, 156, 167, 1),
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (isDiaAtual && !isSelecionado && !isDiaCompleto)
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Color.fromARGB(255, 255, 0, 0),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'HOJE',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          if (isDiaCompleto && !isSelecionado)
+                            Icon(
+                              Icons.check_circle,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                        ],
+                      ),
+                      Icon(
+                        dia['is_cardio'] == 1 
+                          ? Icons.directions_run 
+                          : Icons.fitness_center,
+                        color: (isSelecionado || isDiaCompleto)
+                          ? Colors.white.withOpacity(0.9)
+                          : Color.fromRGBO(149, 156, 167, 1),
+                        size: 32,
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            dia['is_cardio'] == 1 ? 'Recovery' : (dia['descricao'] ?? 'Treino'),
+                            style: TextStyle(
+                              color: (isSelecionado || isDiaCompleto) ? Colors.white : Colors.white.withOpacity(0.9),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            dia['is_cardio'] == 1 ? 'Descanso' : 'Treino',
+                            style: TextStyle(
+                              color: (isSelecionado || isDiaCompleto)
+                                ? Colors.white.withOpacity(0.8)
+                                : Color.fromRGBO(149, 156, 167, 1),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Card do treino selecionado
+        Container(
+          padding: EdgeInsets.all(24),      
+          decoration: BoxDecoration(
+            color: isCompleted 
+              ? Color.fromRGBO(20, 50, 30, 1)  // Verde escuro quando completo
+              : Color.fromRGBO(40, 30, 25, 1),  // Marrom quando não completo
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isCompleted
+                ? Color.fromRGBO(34, 197, 94, 1)  // Borda verde quando completo
+                : Color.fromARGB(255, 80, 40, 35),  // Borda marrom quando não completo
+              width: 1,
+            ),
+            boxShadow: [
+              if (isCompleted)
+                BoxShadow(
+                  color: Color.fromRGBO(34, 197, 94, 0.3),
+                  blurRadius: 20,
+                  spreadRadius: 3,
+                )
+              else
+                BoxShadow(
+                  color: Color.fromARGB(255, 255, 0, 0).withOpacity(0.2),
+                  blurRadius: 20,
+                  spreadRadius: 3,
+                ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isCompleted
+                        ? Color.fromRGBO(34, 197, 94, 1).withOpacity(0.2)  // Verde claro quando completo
+                        : Color.fromARGB(255, 255, 0, 0).withOpacity(0.2),  // Vermelho quando não completo
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      isCompleted ? 'TREINO COMPLETO' : 'OBJETIVO PRINCIPAL',
+                      style: TextStyle(
+                        color: isCompleted
+                          ? Color.fromRGBO(34, 197, 94, 1)  // Verde quando completo
+                          : Color.fromARGB(255, 255, 0, 0),  // Vermelho quando não completo
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.edit,
+                      color: isCompleted
+                        ? Color.fromRGBO(34, 197, 94, 1)  // Verde quando completo
+                        : Color.fromARGB(255, 255, 0, 0),  // Vermelho quando não completo
+                      size: 24,
+                    ),
+                    onPressed: () async {
+                      final controller = TextEditingController(
+                        text: diaAtual['descricao'] ?? ''
+                      );
+                      bool isCardio = diaAtual['is_cardio'] == 1;
+                      
+                      await showDialog(
+                        context: context,
+                        builder: (context) => StatefulBuilder(
+                          builder: (context, setDialogState) => AlertDialog(
+                            backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
+                            title: Text(
+                              'Editar Dia',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'TREINOS COMPLETOS',
-                                  style: TextStyle(
-                                    color: Color.fromARGB(255, 255, 0, 0),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  '$diasCompletados / $totalDias completos',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 25,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            // Progresso circular
-                            Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 70,
-                                  height: 70,
-                                  child: CircularProgressIndicator(
-                                    value: percentual,
-                                    strokeWidth: 8,
-                                    backgroundColor: const Color.fromARGB(255, 80, 30, 30),
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Color.fromARGB(255, 255, 0, 0),
+                                TextField(
+                                  controller: controller,
+                                  maxLength: 30,
+                                  style: TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    labelText: 'Descrição',
+                                    labelStyle: TextStyle(
+                                      color: Color.fromRGBO(149, 156, 167, 100)
+                                    ),
+                                    hintText: 'Digite a descrição',
+                                    hintStyle: TextStyle(
+                                      color: Color.fromRGBO(149, 156, 167, 100)
+                                    ),
+                                    enabledBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Color.fromRGBO(149, 156, 167, 100)
+                                      ),
+                                    ),
+                                    focusedBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Color.fromARGB(255, 255, 0, 0)
+                                      ),
                                     ),
                                   ),
                                 ),
-                                Text(
-                                  '${(percentual * 100).toInt()}%',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                const SizedBox(height: 20),
+                                Row(
+                                  children: [
+                                    Checkbox(
+                                      value: isCardio,
+                                      activeColor: Color.fromARGB(255, 255, 0, 0),
+                                      onChanged: (value) {
+                                        setDialogState(() {
+                                          isCardio = value ?? false;
+                                        });
+                                      },
+                                    ),
+                                    Text(
+                                      'Dia de Cardio',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Icon(
+                                      Icons.directions_run,
+                                      color: isCardio 
+                                        ? Color.fromARGB(255, 255, 0, 0)
+                                        : Color.fromRGBO(149, 156, 167, 100),
+                                      size: 24,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text(
+                                  'Cancelar',
+                                  style: TextStyle(
+                                    color: Color.fromRGBO(149, 156, 167, 100)
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  await DatabaseService.updateDiaDescricao(
+                                    diaAtual['id'],
+                                    controller.text
+                                  );
+                                  await DatabaseService.updateDiaCardio(
+                                    diaAtual['id'],
+                                    isCardio
+                                  );
+                                  Navigator.pop(context);
+                                  _refreshDias();
+                                },
+                                child: Text(
+                                  'Salvar',
+                                  style: TextStyle(
+                                    color: Color.fromARGB(255, 255, 0, 0)
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                isCardio ? 'Descanso & Cardio' : (diaAtual['descricao'] ?? 'Treino'),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Métricas
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildMetricCard(
+                    'Volume',
+                    '${volumeTotal.toStringAsFixed(0)}',
+                    'kg',
+                    null,
+                  ),
+                  _buildMetricCard(
+                    'Intensidade',
+                    'Média',
+                    '',
+                    null,
+                  ),
+                  _buildMetricCard(
+                    'Tempo',
+                    '${tempoEstimado}m',
+                    'Est.',
+                    null,
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Botão Start Session
+              SizedBox(
+                width: double.infinity,
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: isCardio ? null : () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TrainingScreen(
+                          diaId: diaAtual['id'],
+                          name: diaAtual['nome'],
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      // Título da seção
+                    );
+                    _refreshDias();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isCompleted
+                      ? Color.fromRGBO(34, 197, 94, 1)  // Verde quando completo
+                      : Color.fromARGB(255, 255, 0, 0),  // Vermelho quando não completo
+                    disabledBackgroundColor: Color.fromRGBO(100, 100, 100, 1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                    shadowColor: isCompleted
+                      ? Color.fromRGBO(34, 197, 94, 0.5)
+                      : Color.fromARGB(255, 255, 0, 0).withOpacity(0.5),
+                  ).copyWith(
+                    elevation: MaterialStateProperty.all(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isCompleted ? Icons.check_circle : Icons.play_arrow,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 8),
                       Text(
-                        'Monte seu treino',
+                        isCardio 
+                          ? 'Dia de Descanso' 
+                          : isCompleted 
+                            ? 'Treino Completo' 
+                            : 'Iniciar Treino',
                         style: TextStyle(
-                          color: Color.fromRGBO(149, 156, 167, 100),
-                          fontSize: 16,
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Cards lado a lado: Volume Total e Recordes Pessoais
+        if (!isCardio)
+          Row(
+            children: [
+              // Card Volume Total
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Color.fromRGBO(40, 40, 40, 1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Icon(
+                            Icons.fitness_center,
+                            color: Color.fromARGB(255, 255, 0, 0),
+                            size: 28,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Volume Total',
+                        style: TextStyle(
+                          color: Color.fromRGBO(149, 156, 167, 1),
+                          fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      // Lista de dias
-                      ..._diasComDados.map((dia) {
-                        final isCompleted = dia['is_completed'] == 1;
-                        final exercicios = dia['exercicios'] as List<String>;
-                        final volumeTotal = dia['volumeTotal'] as double;
-                        final tempoEstimado = dia['tempoEstimado'] as int;
-                      
-                      // Determinar o dia atual da semana (1 = Segunda, 7 = Domingo)
-                      final hoje = DateTime.now().weekday;
-                      final diaIndex = dia['id'] as int;
-                      final isDiaAtual = diaIndex == hoje;
-                      
-                      // Definir cor da borda: Verde se completo, Vermelho se dia atual, Cinza caso contrário
-                      final borderColor = isCompleted 
-                        ? const Color.fromRGBO(34, 197, 94, 100) 
-                        : isDiaAtual
-                          ? const Color.fromRGBO(220, 38, 38, 100)
-                          : const Color.fromRGBO(100, 100, 100, 100);
-                      
-                      final exerciciosText = exercicios.isEmpty 
-                        ? 'Nenhum exercício' 
-                        : exercicios.join(', ') + (exercicios.length >= 3 ? '...' : '');
-                      
-                      // Formatar volume (converter para kg se necessário)
-                      final volumeFormatado = volumeTotal > 0 
-                        ? '${volumeTotal.toStringAsFixed(0)} kg Vol' 
-                        : '0 kg Vol';
-                      
-                      // Formatar tempo
-                      final tempoFormatado = tempoEstimado > 0
-                        ? tempoEstimado >= 60 
-                          ? '${(tempoEstimado / 60).floor()}h ${tempoEstimado % 60}m'
-                          : '${tempoEstimado}m'
-                        : '0m';
-                          
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color.fromRGBO(30, 30, 30, 100),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border(
-                                  left: BorderSide(
-                                    color: borderColor,
-                                    width: 5,
-                                  ),
-                                ),
-                              ),
-                              child: dia['is_cardio'] == 1
-                                ? // Layout para dia de cardio
-                                  Container(
-                                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              dia['nome'].toUpperCase(),
-                                              style: TextStyle(
-                                                color: borderColor, 
-                                                fontSize: 16, 
-                                                fontWeight: FontWeight.bold
-                                              ),
-                                            ),
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.edit,
-                                                color: Color.fromRGBO(149, 156, 167, 100),
-                                                size: 20,
-                                              ),
-                                              onPressed: () async {
-                                                final controller = TextEditingController(
-                                                  text: dia['descricao'] ?? ''
-                                                );
-                                                bool isCardio = dia['is_cardio'] == 1;
-                                                
-                                                await showDialog(
-                                                  context: context,
-                                                  builder: (context) => StatefulBuilder(
-                                                    builder: (context, setDialogState) => AlertDialog(
-                                                      backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
-                                                      title: Text(
-                                                        'Editar Dia',
-                                                        style: TextStyle(color: Colors.white),
-                                                      ),
-                                                      content: Column(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                          TextField(
-                                                            controller: controller,
-                                                            maxLength: 30,
-                                                            style: TextStyle(color: Colors.white),
-                                                            decoration: InputDecoration(
-                                                              labelText: 'Descrição',
-                                                              labelStyle: TextStyle(
-                                                                color: Color.fromRGBO(149, 156, 167, 100)
-                                                              ),
-                                                              hintText: 'Digite a descrição',
-                                                              hintStyle: TextStyle(
-                                                                color: Color.fromRGBO(149, 156, 167, 100)
-                                                              ),
-                                                              enabledBorder: UnderlineInputBorder(
-                                                                borderSide: BorderSide(
-                                                                  color: Color.fromRGBO(149, 156, 167, 100)
-                                                                ),
-                                                              ),
-                                                              focusedBorder: UnderlineInputBorder(
-                                                                borderSide: BorderSide(
-                                                                  color: Color.fromARGB(255, 255, 0, 0)
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          const SizedBox(height: 20),
-                                                          Row(
-                                                            children: [
-                                                              Checkbox(
-                                                                value: isCardio,
-                                                                activeColor: Color.fromARGB(255, 255, 0, 0),
-                                                                onChanged: (value) {
-                                                                  setDialogState(() {
-                                                                    isCardio = value ?? false;
-                                                                  });
-                                                                },
-                                                              ),
-                                                              Text(
-                                                                'Dia de Cardio',
-                                                                style: TextStyle(
-                                                                  color: Colors.white,
-                                                                  fontSize: 16,
-                                                                ),
-                                                              ),
-                                                              const SizedBox(width: 8),
-                                                              Icon(
-                                                                Icons.directions_run,
-                                                                color: isCardio 
-                                                                  ? Color.fromARGB(255, 255, 0, 0)
-                                                                  : Color.fromRGBO(149, 156, 167, 100),
-                                                                size: 24,
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      actions: [
-                                                        TextButton(
-                                                          onPressed: () => Navigator.pop(context),
-                                                          child: Text(
-                                                            'Cancelar',
-                                                            style: TextStyle(
-                                                              color: Color.fromRGBO(149, 156, 167, 100)
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        TextButton(
-                                                          onPressed: () async {
-                                                            await DatabaseService.updateDiaDescricao(
-                                                              dia['id'],
-                                                              controller.text
-                                                            );
-                                                            await DatabaseService.updateDiaCardio(
-                                                              dia['id'],
-                                                              isCardio
-                                                            );
-                                                            Navigator.pop(context);
-                                                            _refreshDias();
-                                                          },
-                                                          child: Text(
-                                                            'Salvar',
-                                                            style: TextStyle(
-                                                              color: Color.fromARGB(255, 255, 0, 0)
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.directions_run,
-                                              color: Color.fromARGB(255, 70, 70, 70),
-                                              size: 45,
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Text(
-                                                'Descanso & Cardio',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                : // Layout normal para dia de treino
-                                  ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
-                                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10)
-                                  )
-                                ),
-                                onPressed: () async {
-                                  await Navigator.push(context, 
-                                  MaterialPageRoute(builder: (context) {
-                                    return TrainingScreen(
-                                    diaId: dia['id'],
-                                    name : dia['nome']
-                                  );
-                                  })
-                                  );
-                                  // Atualiza a lista quando voltar da tela
-                                  _refreshDias();
-                                  print('Dia clicado: ${dia['nome']}');
-                                },
-                                child: Align(
-                                  alignment: Alignment.topLeft,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          dia['nome'].toUpperCase(),
-                                          style: TextStyle(
-                                            color: borderColor, 
-                                            fontSize: 16, 
-                                            fontWeight: FontWeight.bold
-                                          ),
-                                        ),
-                                        Row(
-                                          children: [
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.edit,
-                                                color: Color.fromRGBO(149, 156, 167, 100),
-                                                size: 20,
-                                              ),
-                                              onPressed: () async {
-                                                final controller = TextEditingController(
-                                                  text: dia['descricao'] ?? ''
-                                                );
-                                                bool isCardio = dia['is_cardio'] == 1;
-                                                
-                                                await showDialog(
-                                                  context: context,
-                                                  builder: (context) => StatefulBuilder(
-                                                    builder: (context, setDialogState) => AlertDialog(
-                                                      backgroundColor: const Color.fromRGBO(30, 30, 30, 100),
-                                                      title: Text(
-                                                        'Editar Dia',
-                                                        style: TextStyle(color: Colors.white),
-                                                      ),
-                                                      content: Column(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                          TextField(
-                                                            controller: controller,
-                                                            maxLength: 30,
-                                                            style: TextStyle(color: Colors.white),
-                                                            decoration: InputDecoration(
-                                                              labelText: 'Descrição',
-                                                              labelStyle: TextStyle(
-                                                                color: Color.fromRGBO(149, 156, 167, 100)
-                                                              ),
-                                                              hintText: 'Digite a descrição',
-                                                              hintStyle: TextStyle(
-                                                                color: Color.fromRGBO(149, 156, 167, 100)
-                                                              ),
-                                                              enabledBorder: UnderlineInputBorder(
-                                                                borderSide: BorderSide(
-                                                                  color: Color.fromRGBO(149, 156, 167, 100)
-                                                                ),
-                                                              ),
-                                                              focusedBorder: UnderlineInputBorder(
-                                                                borderSide: BorderSide(
-                                                                  color: Color.fromARGB(255, 255, 0, 0)
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          const SizedBox(height: 20),
-                                                          Row(
-                                                            children: [
-                                                              Checkbox(
-                                                                value: isCardio,
-                                                                activeColor: Color.fromARGB(255, 255, 0, 0),
-                                                                onChanged: (value) {
-                                                                  setDialogState(() {
-                                                                    isCardio = value ?? false;
-                                                                  });
-                                                                },
-                                                              ),
-                                                              Text(
-                                                                'Dia de Cardio',
-                                                                style: TextStyle(
-                                                                  color: Colors.white,
-                                                                  fontSize: 16,
-                                                                ),
-                                                              ),
-                                                              const SizedBox(width: 8),
-                                                              Icon(
-                                                                Icons.directions_run,
-                                                                color: isCardio 
-                                                                  ? Color.fromARGB(255, 255, 0, 0)
-                                                                  : Color.fromRGBO(149, 156, 167, 100),
-                                                                size: 24,
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      actions: [
-                                                        TextButton(
-                                                          onPressed: () => Navigator.pop(context),
-                                                          child: Text(
-                                                            'Cancelar',
-                                                            style: TextStyle(
-                                                              color: Color.fromRGBO(149, 156, 167, 100)
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        TextButton(
-                                                          onPressed: () async {
-                                                            await DatabaseService.updateDiaDescricao(
-                                                              dia['id'],
-                                                              controller.text
-                                                            );
-                                                            await DatabaseService.updateDiaCardio(
-                                                              dia['id'],
-                                                              isCardio
-                                                            );
-                                                            Navigator.pop(context);
-                                                            _refreshDias();
-                                                          },
-                                                          child: Text(
-                                                            'Salvar',
-                                                            style: TextStyle(
-                                                              color: Color.fromARGB(255, 255, 0, 0)
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                            Icon(
-                                              isCompleted ? Icons.check_circle : Icons.error_outline,
-                                              color: isCompleted 
-                                                ? const Color.fromRGBO(34, 197, 94, 100)
-                                                : Colors.grey,
-                                              size: 24,
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    (dia['descricao'] != null && dia['descricao'].toString().isNotEmpty) 
-                                      ? dia['descricao'] 
-                                      : 'Não definido',
-                                    style: TextStyle(
-                                      color : Colors.white,
-                                      fontSize: 23
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                     Text(
-                                    exerciciosText,
-                                    style: TextStyle(
-                                      color : Color.fromRGBO(149, 156, 167, 100),
-                                      fontSize: 15
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            dia['is_cardio'] == 1 
-                                              ? Icons.directions_run 
-                                              : Icons.fitness_center,
-                                            color: Color.fromRGBO(149, 156, 167, 100),
-                                            size: 18,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            volumeFormatado,
-                                            style: TextStyle(
-                                              color: Color.fromRGBO(149, 156, 167, 100),
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 20),
-                                          Icon(
-                                            Icons.access_time,
-                                            color: Color.fromRGBO(149, 156, 167, 100),
-                                            size: 18,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            tempoFormatado,
-                                            style: TextStyle(
-                                              color: Color.fromRGBO(149, 156, 167, 100),
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      if (isDiaAtual && !isCompleted)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                          decoration: BoxDecoration(
-                                            color: const Color.fromRGBO(220, 38, 38, 100),
-                                            borderRadius: BorderRadius.circular(8),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: const Color.fromRGBO(220, 38, 38, 0.6),
-                                                blurRadius: 12,
-                                                spreadRadius: 1,
-                                              ),
-                                            ],
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                'Começar treino',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Icon(
-                                                Icons.arrow_forward,
-                                                color: Colors.white,
-                                                size: 16,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                    ],
-                                  )
-                                    ],
-                                  ),
-                                ),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${volumeTotal.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              'kg',
+                              style: TextStyle(
+                                color: Color.fromRGBO(149, 156, 167, 1),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                          );
-                    }).toList(),
+                          ),
+                        ],
+                      ),
                     ],
-                  );
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 12),
+              
+              // Card Recordes Pessoais
+              Expanded(
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _getPRsFromDia(diaAtual['id']),
+                  builder: (context, snapshot) {
+                    final prs = snapshot.hasData ? snapshot.data! : [];
+                    
+                    // Encontrar o maior PR
+                    Map<String, dynamic>? maiorPR;
+                    if (prs.isNotEmpty) {
+                      maiorPR = prs.reduce((a, b) => 
+                        (a['pr'] as double) > (b['pr'] as double) ? a : b
+                      );
+                    }
+                    
+                    return Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Color.fromRGBO(40, 40, 40, 1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Icon(
+                                Icons.emoji_events,
+                                color: Color.fromARGB(255, 255, 0, 0),
+                                size: 28,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (maiorPR != null) ...[
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Color.fromRGBO(60, 20, 20, 1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                maiorPR['nome'],
+                                style: TextStyle(
+                                  color: Color.fromARGB(255, 255, 0, 0),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${maiorPR['pr'].toStringAsFixed(1)}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Padding(
+                                  padding: EdgeInsets.only(bottom: 4),
+                                  child: Text(
+                                    'kg',
+                                    style: TextStyle(
+                                      color: Color.fromRGBO(149, 156, 167, 1),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            Text(
+                              'Maior PR',
+                              style: TextStyle(
+                                color: Color.fromRGBO(149, 156, 167, 1),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '0',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                height: 1,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+  
+  Future<List<Map<String, dynamic>>> _getPRsFromDia(int diaId) async {
+    final db = await DatabaseService.getDatabase();
+    
+    // Buscar todos os exercícios do dia
+    final exercicios = await db.rawQuery('''
+      SELECT e.id, e.nome
+      FROM exercicios e
+      INNER JOIN grupos g ON e.grupo_id = g.id
+      WHERE g.dia_id = ?
+      ORDER BY g.ordem, e.ordem
+    ''', [diaId]);
+    
+    List<Map<String, dynamic>> prs = [];
+    
+    for (final exercicio in exercicios) {
+      // Buscar o maior peso registrado para este exercício nas séries
+      final result = await db.rawQuery('''
+        SELECT MAX(peso) as pr
+        FROM series
+        WHERE exercicio_id = ? AND peso IS NOT NULL AND peso > 0
+      ''', [exercicio['id']]);
+      
+      double? prValue;
+      
+      if (result.isNotEmpty && result[0]['pr'] != null) {
+        prValue = result[0]['pr'] as double;
+      } else {
+        // Se não encontrou nas séries, buscar nos logs pelo nome do exercício
+        final logResult = await db.rawQuery('''
+          SELECT MAX(peso) as pr
+          FROM logs
+          WHERE exercicio_nome = ? AND peso IS NOT NULL AND peso > 0
+        ''', [exercicio['nome']]);
+        
+        if (logResult.isNotEmpty && logResult[0]['pr'] != null) {
+          prValue = logResult[0]['pr'] as double;
+        }
+      }
+      
+      if (prValue != null && prValue > 0) {
+        prs.add({
+          'nome': exercicio['nome'],
+          'pr': prValue,
+        });
+      }
+    }
+    
+    return prs;
+  }
+  
+  Widget _buildMetricCard(String label, String value, String subtitle, String? change) {
+    return Expanded(
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 4),
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Color.fromRGBO(30, 25, 22, 1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: Color.fromRGBO(149, 156, 167, 1),
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: change != null 
+                      ? Color.fromARGB(255, 255, 0, 0)
+                      : Color.fromRGBO(149, 156, 167, 1),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (change != null) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    change,
+                    style: TextStyle(
+                      color: Color.fromARGB(255, 255, 0, 0),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
