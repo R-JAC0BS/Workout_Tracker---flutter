@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:workout_tracker/Widget/customAppBar.dart';
+import 'package:workout_tracker/Widget/Modal/rpe_rir_modal.dart';
+import 'package:workout_tracker/Widget/rest_timer_widget.dart';
 import 'package:workout_tracker/service/database_service.dart';
 import 'package:workout_tracker/service/log_service.dart';
+import 'package:workout_tracker/service/analysis_service.dart';
+import 'package:workout_tracker/service/intensity_service.dart';
 
 class SerieScreenWidget extends StatefulWidget {
   final String nome;
@@ -14,10 +18,40 @@ class SerieScreenWidget extends StatefulWidget {
 
 class _SerieScreenWidgetState extends State<SerieScreenWidget> {
   int _refreshKey = 0;
+  bool _showRestTimer = false;
+  int _tempoDescansoAlvo = 90; // Padrão: 90 segundos
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarTempoDescansoAlvo();
+  }
+
+  Future<void> _carregarTempoDescansoAlvo() async {
+    // Buscar tempo_descanso_alvo do exercício ou usar padrão (90s)
+    final config = await DatabaseService.getConfiguracaoExercicio(widget.nome);
+    if (config != null && config['tempo_descanso_alvo'] != null) {
+      setState(() {
+        _tempoDescansoAlvo = config['tempo_descanso_alvo'] as int;
+      });
+    }
+  }
 
   void _refreshSeries() {
     setState(() {
       _refreshKey++;
+    });
+  }
+
+  void _iniciarCronometro() {
+    setState(() {
+      _showRestTimer = true;
+    });
+  }
+
+  void _fecharCronometro() {
+    setState(() {
+      _showRestTimer = false;
     });
   }
 
@@ -30,12 +64,21 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
     _refreshSeries();
   }
 
+  Color _getRPEBadgeColor(int rpe) {
+    if (rpe >= 9) return const Color.fromARGB(255, 255, 0, 0); // Vermelho - muito alto
+    if (rpe >= 8) return Colors.orange; // Laranja - alto
+    if (rpe >= 7) return Colors.yellow.shade700; // Amarelo - moderado
+    return Colors.green; // Verde - baixo
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBarWidget(text: widget.nome),
-      body: Column(
+      body: Stack(
         children: [
+          Column(
+            children: [
           // Informações superiores: PR e Grupo Muscular
           FutureBuilder<List<dynamic>>(
             future: Future.wait([
@@ -110,7 +153,7 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
           ),
           // Caixa de Volume Total
           FutureBuilder<List<Map<String, dynamic>>>(
-            key: ValueKey(_refreshKey),
+            key: const ValueKey('volume-total'),
             future: DatabaseService.getSeries(widget.exercicioId),
             builder: (context, snapshot) {
               double volumeTotal = 0;
@@ -170,6 +213,67 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
               );
             },
           ),
+          // Caixa de RPE Médio
+          FutureBuilder<double>(
+            key: const ValueKey('rpe-medio'),
+            future: AnalysisService.calcularRPEMedioExercicio(widget.exercicioId),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || snapshot.data == 0.0) {
+                return const SizedBox.shrink();
+              }
+
+              final rpeMedio = snapshot.data!;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _getRPEBadgeColor(rpeMedio.round()).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _getRPEBadgeColor(rpeMedio.round()),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'RPE MÉDIO',
+                            style: TextStyle(
+                              color: _getRPEBadgeColor(rpeMedio.round()),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            rpeMedio.toStringAsFixed(1),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Icon(
+                        Icons.fitness_center,
+                        color: _getRPEBadgeColor(rpeMedio.round()),
+                        size: 32,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           // Cabeçalho da tabela
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -220,7 +324,7 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
               child: Column(
                 children: [
                   FutureBuilder<List<Map<String, dynamic>>>(
-                    key: ValueKey(_refreshKey),
+                    key: const ValueKey('series-list'),
                     future: DatabaseService.getSeries(widget.exercicioId),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
@@ -298,32 +402,34 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
                                         _refreshSeries();
                                       }
                                     },
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: const Color.fromRGBO(30, 30, 30, 100),
-                                        borderRadius: BorderRadius.circular(15),
-                                        border: Border.all(
-                                          color: const Color.fromRGBO(50, 50, 50, 100),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          // Número do set
-                                          Expanded(
-                                            flex: 1,
-                                            child: Container(
-                                              width: 50,
-                                              height: 50,
-                                              decoration: BoxDecoration(
-                                                color: const Color.fromRGBO(30, 30, 30, 100),
-                                                shape: BoxShape.circle,
-                                                border: Border.all(
-                                                  color: const Color.fromRGBO(50, 50, 50, 100),
-                                                  width: 1,
-                                                ),
-                                              ),
+                                    child: Stack(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: const Color.fromRGBO(30, 30, 30, 100),
+                                            borderRadius: BorderRadius.circular(15),
+                                            border: Border.all(
+                                              color: const Color.fromRGBO(50, 50, 50, 100),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              // Número do set
+                                              Expanded(
+                                                flex: 1,
+                                                child: Container(
+                                                  width: 50,
+                                                  height: 50,
+                                                  decoration: BoxDecoration(
+                                                    color: const Color.fromRGBO(30, 30, 30, 100),
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: const Color.fromRGBO(50, 50, 50, 100),
+                                                      width: 1,
+                                                    ),
+                                                  ),
                                               child: Center(
                                                 child: Text(
                                                   '${index + 1}',
@@ -448,6 +554,32 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
                                                 } catch (e) {
                                                   print('Erro ao salvar log: $e');
                                                 }
+                                                
+                                                // Mostrar modal de RPE/RIR após completar série
+                                                if (context.mounted) {
+                                                  await showDialog(
+                                                    context: context,
+                                                    barrierDismissible: true,
+                                                    builder: (context) => RPERIRModal(
+                                                      onSave: (rpe, rir) async {
+                                                        if (rpe != null && rir != null) {
+                                                          await DatabaseService.updateSerieIntensity(
+                                                            serieId: serie['id'],
+                                                            rpe: rpe,
+                                                            rir: rir,
+                                                          );
+                                                          // Atualizar o map local
+                                                          serie['rpe'] = rpe;
+                                                          serie['rir'] = rir;
+                                                          setItemState(() {});
+                                                        }
+                                                      },
+                                                    ),
+                                                  );
+                                                }
+                                                
+                                                // Iniciar cronômetro automaticamente após completar série
+                                                _iniciarCronometro();
                                               }
                                               
                                               // Atualiza o status no map local
@@ -497,9 +629,42 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
                                               ),
                                             ),
                                           ),
+                                          // Badge de RPE/RIR
+                                          if (serie['rpe'] != null || serie['rir'] != null) ...[
+                                            const SizedBox(width: 8),
+                                          ],
                                         ],
                                       ),
                                     ),
+                                    // Badge de RPE/RIR posicionado no canto superior direito
+                                    if (serie['rpe'] != null || serie['rir'] != null)
+                                      Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade800,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: Colors.grey.shade600,
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            serie['rpe'] != null 
+                                                ? 'RPE ${serie['rpe']}'
+                                                : 'RIR ${serie['rir']}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                                   ),
                                 );
                               },
@@ -553,6 +718,23 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
           ),
         ],
       ),
+      // RestTimerWidget flutuante no bottom da tela
+      if (_showRestTimer)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: RestTimerWidget(
+            tempoAlvoSegundos: _tempoDescansoAlvo,
+            onClose: _fecharCronometro,
+            onTempoAlvoAtingido: () {
+              // Opcional: fazer algo quando tempo alvo é atingido
+              // Por exemplo, vibrar ou tocar som (já tratado pelo RestTimerService)
+            },
+          ),
+        ),
+      ],
+    ),
     );
   }
 }

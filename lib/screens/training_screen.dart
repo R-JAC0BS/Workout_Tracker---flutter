@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:workout_tracker/Widget/Modal/modalDia.dart';
 import 'package:workout_tracker/Widget/customAppBar.dart';
 import 'package:workout_tracker/service/database_service.dart';
+import 'package:workout_tracker/service/analysis_service.dart';
 import 'package:workout_tracker/screens/exercise_screen.dart';
 
 class TrainingScreen extends StatefulWidget {
@@ -19,6 +20,81 @@ class _TrainingScreenState extends State<TrainingScreen> {
   
   // Chave para forçar rebuild do FutureBuilder
   int _refreshKey = 0;
+  
+  // ID da sessão de treino ativa
+  int? _sessaoId;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeSessao();
+  }
+
+  // Inicializa ou recupera sessão de treino ativa
+  Future<void> _initializeSessao() async {
+    // Verificar se já existe uma sessão ativa para este dia
+    final sessaoAtiva = await DatabaseService.getSessaoAtiva(widget.diaId);
+    
+    if (sessaoAtiva != null) {
+      // Já existe uma sessão ativa, usar o ID dela
+      setState(() {
+        _sessaoId = sessaoAtiva['id'] as int;
+      });
+    } else {
+      // Não existe sessão ativa, criar uma nova
+      final novoSessaoId = await DatabaseService.createSessaoTreino(widget.diaId);
+      setState(() {
+        _sessaoId = novoSessaoId;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    // Finalizar sessão quando usuário sai da tela
+    _finalizarSessao();
+    super.dispose();
+  }
+
+  /// Finaliza a sessão de treino calculando todas as métricas agregadas
+  Future<void> _finalizarSessao() async {
+    if (_sessaoId == null) return;
+    
+    try {
+      // Calcular todas as métricas agregadas usando AnalysisService
+      final metricas = await AnalysisService.analisarIntensidadeSessao(_sessaoId!);
+      
+      // Verificar se houve erro na análise
+      if (metricas.containsKey('error')) {
+        print('Erro ao analisar sessão: ${metricas['error']}');
+        return;
+      }
+      
+      // Extrair métricas calculadas
+      final volumeTotal = metricas['volume_total'] as double;
+      final rpeMedio = metricas['rpe_medio'] as double;
+      final densidade = metricas['densidade'] as double;
+      final tutTotal = metricas['tut_total'] as int;
+      final tempoDescansoMedio = metricas['tempo_descanso_medio'] as double;
+      final scoreIntensidade = metricas['score_intensidade'] as int;
+      
+      // Atualizar registro de sessao_treino com data_fim e todas as métricas
+      await DatabaseService.finalizarSessaoTreino(
+        sessaoId: _sessaoId!,
+        dataFim: DateTime.now(),
+        volumeTotal: volumeTotal,
+        rpeMedio: rpeMedio > 0 ? rpeMedio : null,
+        densidade: densidade > 0 ? densidade : null,
+        tutTotal: tutTotal > 0 ? tutTotal : null,
+        tempoDescansoMedio: tempoDescansoMedio > 0 ? tempoDescansoMedio.round() : null,
+        scoreIntensidade: scoreIntensidade,
+      );
+      
+      print('Sessão finalizada com sucesso: ID $_sessaoId');
+    } catch (e) {
+      print('Erro ao finalizar sessão: $e');
+    }
+  }
 
   // Lista de ícones para grupos musculares
   final List<IconData> _muscleIcons = [

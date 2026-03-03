@@ -3,6 +3,7 @@ import 'package:workout_tracker/Widget/customAppBar.dart';
 import 'package:workout_tracker/Widget/navBar/navBar.dart';
 import 'package:workout_tracker/service/database_service.dart';
 import 'package:workout_tracker/service/reload_service.dart';
+import 'package:workout_tracker/service/rest_timer_service.dart';
 import 'package:workout_tracker/screens/home_screen.dart';
 import 'package:workout_tracker/screens/stats_screen.dart';
 import 'package:workout_tracker/screens/history_screen.dart';
@@ -16,6 +17,11 @@ void main() async {
   await DatabaseService.getDatabase();
   await DatabaseService.ensureLogsTableExists();
   await ReloadData.checkAndResetWeeklyData();
+  
+  // Inicializar sistema de notificações
+  await RestTimerService.inicializarNotificacoes();
+  // Solicitar permissões de notificação
+  await RestTimerService.solicitarPermissoes();
 
   runApp(const MyApp());
 }

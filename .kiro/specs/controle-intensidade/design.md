@@ -651,3 +651,695 @@ Após análise dos critérios de aceitação, identificamos as seguintes proprie
 *Para qualquer* duas sessões A e B, se A tem volume maior, RPE maior, densidade maior e TUT maior que B, então o score de A deve ser maior ou igual ao score de B
 **Valida: Requisitos US-6.2**
 
+
+## Tratamento de Erros
+
+### Validação de Entrada
+
+**RPE Inválido**:
+- Entrada: RPE < 1 ou RPE > 10
+- Resposta: Rejeitar entrada, manter valor anterior, mostrar mensagem "RPE deve estar entre 1 e 10"
+
+**RIR Inválido**:
+- Entrada: RIR < 0
+- Resposta: Rejeitar entrada, manter valor anterior, mostrar mensagem "RIR não pode ser negativo"
+
+**Tempo de Descanso Inválido**:
+- Entrada: Tempo < 30s ou Tempo > 300s
+- Resposta: Rejeitar configuração, usar valor padrão (90s), mostrar mensagem "Tempo deve estar entre 30s e 5min"
+
+**TUT Inválido**:
+- Entrada: TUT ≤ 0
+- Resposta: Rejeitar entrada, não salvar valor, mostrar mensagem "TUT deve ser maior que zero"
+
+### Erros de Cálculo
+
+**Divisão por Zero na Densidade**:
+- Situação: Tempo total = 0
+- Resposta: Retornar densidade = 0, não calcular
+
+**Média sem Dados**:
+- Situação: Calcular RPE/RIR/TUT médio quando nenhuma série tem valores
+- Resposta: Retornar null ou 0, não exibir métrica
+
+**Sessão sem Data de Fim**:
+- Situação: Calcular métricas de sessão que não foi finalizada
+- Resposta: Usar tempo atual como data_fim temporária, marcar como "em andamento"
+
+### Erros de Persistência
+
+**Falha ao Salvar Configuração**:
+- Resposta: Mostrar mensagem de erro, manter configuração anterior, permitir retry
+
+**Falha ao Atualizar Série**:
+- Resposta: Reverter mudanças locais, mostrar mensagem de erro, permitir retry
+
+**Falha ao Criar Sessão**:
+- Resposta: Permitir treino continuar sem rastreamento de sessão, alertar usuário
+
+### Erros de Notificação
+
+**Permissão de Notificação Negada**:
+- Resposta: Desabilitar notificações automaticamente, mostrar alerta visual no app, permitir reconfigurar
+
+**Falha ao Emitir Notificação**:
+- Resposta: Log do erro, continuar operação normalmente, usar feedback visual alternativo
+
+## Estratégia de Testes
+
+### Abordagem Dual de Testes
+
+Este projeto utilizará duas abordagens complementares de teste:
+
+1. **Testes Unitários**: Verificam exemplos específicos, casos extremos e condições de erro
+2. **Testes Baseados em Propriedades**: Verificam propriedades universais através de múltiplas entradas geradas
+
+Ambos são necessários para cobertura abrangente. Testes unitários capturam bugs concretos, enquanto testes de propriedade verificam correção geral.
+
+### Configuração de Testes de Propriedade
+
+**Biblioteca**: Utilizaremos o pacote `test` do Dart com geração manual de dados aleatórios, ou `faker` para dados mais complexos.
+
+**Configuração**:
+- Mínimo de 100 iterações por teste de propriedade
+- Cada teste deve referenciar a propriedade do documento de design
+- Formato de tag: **Feature: controle-intensidade, Property {número}: {texto da propriedade}**
+
+### Testes Unitários
+
+**IntensityService**:
+- Conversão RPE→RIR para valores conhecidos (RPE 10→RIR 0, RPE 9→RIR 1)
+- Conversão RIR→RPE para valores conhecidos
+- Cálculo de densidade com valores específicos
+- Cálculo de TUT sugerido para 10 reps = 40s
+- Score de intensidade para métricas conhecidas
+- Validação de RPE/RIR com valores limite (0, 1, 10, 11, -1)
+
+**RestTimerService**:
+- Cronômetro conta corretamente até tempo alvo
+- Pausa e retomada mantêm tempo correto
+- Notificação é disparada no tempo certo
+
+**AnalysisService**:
+- Cálculo de médias com conjunto vazio retorna 0 ou null
+- Cálculo de totais com valores conhecidos
+- Comparação de sessões retorna ordem correta
+
+**ConfigService**:
+- Salvar e recuperar configurações retorna valores corretos
+- Configurações padrão são aplicadas quando não há configuração salva
+
+### Testes de Propriedade
+
+Cada propriedade listada na seção "Propriedades de Correção" deve ter um teste correspondente:
+
+**Propriedade 1 - Validação de RPE**:
+```dart
+// Feature: controle-intensidade, Property 1: Validação de RPE
+test('RPE validation accepts 1-10 and rejects outside range', () {
+  for (int i = 0; i < 100; i++) {
+    final rpe = Random().nextInt(20) - 5; // -5 to 14
+    final isValid = IntensityService.validarRPE(rpe);
+    expect(isValid, equals(rpe >= 1 && rpe <= 10));
+  }
+});
+```
+
+**Propriedade 5 - Conversão RPE↔RIR Round-Trip**:
+```dart
+// Feature: controle-intensidade, Property 5: Conversão RPE↔RIR Round-Trip
+test('RPE to RIR to RPE round-trip preserves value', () {
+  for (int i = 0; i < 100; i++) {
+    final rpe = 6 + Random().nextInt(5); // 6-10
+    final rir = IntensityService.converterRPEparaRIR(rpe);
+    final rpeRecuperado = IntensityService.converterRIRparaRPE(rir);
+    expect(rpeRecuperado, equals(rpe));
+  }
+});
+```
+
+**Propriedade 16 - Cálculo de Densidade**:
+```dart
+// Feature: controle-intensidade, Property 16: Cálculo de Densidade
+test('density calculation is correct for any volume and time', () {
+  for (int i = 0; i < 100; i++) {
+    final volume = Random().nextDouble() * 10000; // 0-10000 kg
+    final tempoSegundos = 60 + Random().nextInt(7200); // 1min-2h
+    final densidade = IntensityService.calcularDensidade(volume, tempoSegundos);
+    final densidadeEsperada = (volume / tempoSegundos) * 60;
+    expect(densidade, closeTo(densidadeEsperada, 0.01));
+  }
+});
+```
+
+**Propriedade 18 - Score de Intensidade Limitado**:
+```dart
+// Feature: controle-intensidade, Property 18: Score de Intensidade Limitado
+test('intensity score is always between 0 and 100', () {
+  for (int i = 0; i < 100; i++) {
+    final volume = Random().nextDouble() * 10000;
+    final rpeMedio = 1 + Random().nextDouble() * 9; // 1-10
+    final densidade = Random().nextDouble() * 100;
+    final tutTotal = Random().nextInt(3600);
+    
+    final score = IntensityService.calcularScoreIntensidade(
+      volumeTotal: volume,
+      rpeMedio: rpeMedio,
+      densidade: densidade,
+      tutTotal: tutTotal,
+    );
+    
+    expect(score, greaterThanOrEqualTo(0));
+    expect(score, lessThanOrEqualTo(100));
+  }
+});
+```
+
+### Cobertura de Testes
+
+**Testes de Propriedade** (100+ iterações cada):
+- Propriedades 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+
+**Testes Unitários** (exemplos específicos):
+- Conversões RPE↔RIR com valores conhecidos
+- Cálculos com valores extremos (0, máximo)
+- Casos de erro (divisão por zero, dados ausentes)
+- Integração entre componentes
+
+**Testes de Integração**:
+- Fluxo completo: completar série → registrar RPE → iniciar cronômetro → salvar dados
+- Fluxo de sessão: iniciar → completar séries → finalizar → calcular métricas
+- Persistência: salvar configurações → recuperar → verificar valores
+
+
+## Detalhes de Implementação
+
+### Migração do Banco de Dados
+
+A versão atual do banco é 5. Esta funcionalidade requer versão 6.
+
+**Script de Migração (onUpgrade v5→v6)**:
+```dart
+if (oldVersion < 6) {
+  // Adicionar campos de intensidade à tabela series
+  await db.execute('ALTER TABLE series ADD COLUMN rpe INTEGER');
+  await db.execute('ALTER TABLE series ADD COLUMN rir INTEGER');
+  await db.execute('ALTER TABLE series ADD COLUMN tempo_descanso_segundos INTEGER');
+  await db.execute('ALTER TABLE series ADD COLUMN tut_segundos INTEGER');
+  await db.execute('ALTER TABLE series ADD COLUMN tempo_inicio TIMESTAMP');
+  await db.execute('ALTER TABLE series ADD COLUMN tempo_fim TIMESTAMP');
+  
+  // Criar tabela de configurações por exercício
+  await db.execute('''
+    CREATE TABLE configuracoes_exercicio (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      exercicio_nome TEXT NOT NULL UNIQUE,
+      tempo_descanso_alvo INTEGER,
+      tut_alvo INTEGER,
+      rpe_alvo INTEGER
+    )
+  ''');
+  
+  // Criar tabela de sessões de treino
+  await db.execute('''
+    CREATE TABLE sessao_treino (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      dia_id INTEGER NOT NULL,
+      data_inicio TIMESTAMP NOT NULL,
+      data_fim TIMESTAMP,
+      densidade REAL,
+      score_intensidade INTEGER,
+      volume_total REAL,
+      rpe_medio REAL,
+      tut_total INTEGER,
+      tempo_descanso_medio INTEGER,
+      FOREIGN KEY (dia_id) REFERENCES dias(id) ON DELETE CASCADE
+    )
+  ''');
+}
+```
+
+### Algoritmo de Conversão RPE↔RIR
+
+**Mapeamento**:
+```
+RPE  | RIR | Descrição
+-----|-----|---------------------------
+10   | 0   | Falha muscular
+9    | 1   | 1 rep na reserva
+8    | 2   | 2 reps na reserva
+7    | 3   | 3 reps na reserva
+6    | 4   | 4 reps na reserva
+≤5   | 5+  | 5 ou mais reps na reserva
+```
+
+**Implementação**:
+```dart
+static int converterRPEparaRIR(int rpe) {
+  if (rpe >= 10) return 0;
+  if (rpe == 9) return 1;
+  if (rpe == 8) return 2;
+  if (rpe == 7) return 3;
+  if (rpe == 6) return 4;
+  return 5; // RPE ≤5 = RIR 5+
+}
+
+static int converterRIRparaRPE(int rir) {
+  if (rir <= 0) return 10;
+  if (rir == 1) return 9;
+  if (rir == 2) return 8;
+  if (rir == 3) return 7;
+  if (rir == 4) return 6;
+  return 5; // RIR ≥5 = RPE 5
+}
+```
+
+### Algoritmo de Score de Intensidade
+
+O score combina múltiplas métricas normalizadas:
+
+```dart
+static int calcularScoreIntensidade({
+  required double volumeTotal,
+  required double rpeMedio,
+  required double densidade,
+  required int tutTotal,
+}) {
+  // Normalizar cada métrica para 0-1
+  
+  // Volume: normalizar baseado em referência de 5000kg como "alto"
+  final volumeNorm = (volumeTotal / 5000).clamp(0.0, 1.0);
+  
+  // RPE: já está em escala 1-10, normalizar para 0-1
+  final rpeNorm = ((rpeMedio - 1) / 9).clamp(0.0, 1.0);
+  
+  // Densidade: normalizar baseado em 50 kg/min como "alto"
+  final densidadeNorm = (densidade / 50).clamp(0.0, 1.0);
+  
+  // TUT: normalizar baseado em 1800s (30min) como "alto"
+  final tutNorm = (tutTotal / 1800).clamp(0.0, 1.0);
+  
+  // Pesos para cada métrica (total = 1.0)
+  const pesoVolume = 0.3;
+  const pesoRPE = 0.4;      // RPE é o mais importante
+  const pesoDensidade = 0.2;
+  const pesoTUT = 0.1;
+  
+  // Calcular score ponderado
+  final score = (
+    volumeNorm * pesoVolume +
+    rpeNorm * pesoRPE +
+    densidadeNorm * pesoDensidade +
+    tutNorm * pesoTUT
+  ) * 100;
+  
+  return score.round().clamp(0, 100);
+}
+```
+
+### Algoritmo de Detecção de Overtraining
+
+```dart
+static bool detectarRiscoOvertraining(double rpeMedioUltimos7Dias) {
+  return rpeMedioUltimos7Dias > 9.0;
+}
+
+// Buscar RPE médio dos últimos 7 dias
+static Future<double> calcularRPEMedioUltimos7Dias() async {
+  final db = await DatabaseService.getDatabase();
+  final dataLimite = DateTime.now().subtract(Duration(days: 7));
+  
+  final result = await db.rawQuery('''
+    SELECT AVG(series.rpe) as rpe_medio
+    FROM series
+    INNER JOIN exercicios ON series.exercicio_id = exercicios.id
+    INNER JOIN grupos ON exercicios.grupo_id = grupos.id
+    INNER JOIN sessao_treino ON grupos.dia_id = sessao_treino.dia_id
+    WHERE series.rpe IS NOT NULL
+      AND sessao_treino.data_inicio >= ?
+  ''', [dataLimite.toIso8601String()]);
+  
+  if (result.isNotEmpty && result.first['rpe_medio'] != null) {
+    return (result.first['rpe_medio'] as num).toDouble();
+  }
+  return 0.0;
+}
+```
+
+### Gerenciamento de Estado do Cronômetro
+
+O cronômetro de descanso usa um Timer do Dart e mantém estado global:
+
+```dart
+class RestTimerService {
+  static Timer? _timer;
+  static int _segundosDecorridos = 0;
+  static int _tempoAlvo = 0;
+  static Function(int)? _onTick;
+  static Function()? _onComplete;
+  static bool _isPaused = false;
+  
+  static void iniciarCronometro({
+    required int tempoAlvoSegundos,
+    required Function(int) onTick,
+    required Function() onComplete,
+  }) {
+    // Parar cronômetro anterior se existir
+    pararCronometro();
+    
+    _segundosDecorridos = 0;
+    _tempoAlvo = tempoAlvoSegundos;
+    _onTick = onTick;
+    _onComplete = onComplete;
+    _isPaused = false;
+    
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (!_isPaused) {
+        _segundosDecorridos++;
+        _onTick?.call(_segundosDecorridos);
+        
+        if (_segundosDecorridos >= _tempoAlvo) {
+          _onComplete?.call();
+          notificarTempoAlvo();
+        }
+      }
+    });
+  }
+  
+  static void pararCronometro() {
+    _timer?.cancel();
+    _timer = null;
+    _segundosDecorridos = 0;
+  }
+  
+  static void pausarCronometro() {
+    _isPaused = true;
+  }
+  
+  static void retomarCronometro() {
+    _isPaused = false;
+  }
+  
+  static int getTempoDecorrido() => _segundosDecorridos;
+  static bool isAtivo() => _timer != null && _timer!.isActive;
+}
+```
+
+
+## Fluxos de Interação
+
+### Fluxo 1: Registrar RPE/RIR após Série
+
+```
+1. Usuário marca série como completa (tap no botão ✓)
+2. Sistema salva série como completa
+3. Sistema salva log (existente)
+4. [NOVO] Se configuração "mostrar_modal_rpe" = true:
+   a. Exibir modal com botões RPE (6-10) ou RIR (0-4)
+   b. Usuário seleciona valor OU tapa fora para pular
+   c. Se selecionou:
+      - Salvar RPE/RIR na série
+      - Se selecionou RPE, calcular e salvar RIR automaticamente
+      - Se selecionou RIR, calcular e salvar RPE automaticamente
+5. [NOVO] Se configuração "cronometro_automatico" = true:
+   a. Buscar tempo_descanso_alvo do exercício (ou usar padrão 90s)
+   b. Iniciar RestTimerService
+   c. Exibir widget flutuante de cronômetro
+6. Atualizar UI
+```
+
+### Fluxo 2: Rastrear TUT
+
+```
+1. Usuário tapa botão "Iniciar TUT" antes de começar série
+2. TUTService.iniciarTUT()
+3. Widget mostra cronômetro crescente
+4. Usuário executa série
+5. Usuário tapa botão "Parar TUT" ao terminar série
+6. tutSegundos = TUTService.pararTUT()
+7. Sistema salva tutSegundos na série
+8. [OPCIONAL] Se tutSegundos < calcularTUTSugerido(reps) * 0.7:
+   - Mostrar alerta: "TUT baixo - considere execução mais controlada"
+```
+
+### Fluxo 3: Iniciar e Finalizar Sessão
+
+```
+INÍCIO DA SESSÃO:
+1. Usuário navega para TrainingScreen de um dia
+2. [NOVO] Sistema verifica se já existe sessão ativa para o dia
+3. [NOVO] Se não existe:
+   a. Criar registro em sessao_treino
+   b. Salvar dia_id e data_inicio
+   c. Armazenar sessaoId em memória (estado global ou provider)
+4. Usuário completa séries normalmente
+
+FIM DA SESSÃO:
+1. Usuário finaliza treino (botão "Finalizar Treino" ou navega para fora)
+2. [NOVO] Sistema calcula métricas agregadas:
+   a. volume_total = SUM(peso × reps) de todas as séries
+   b. rpe_medio = AVG(rpe) de séries com RPE
+   c. tempo_total = data_fim - data_inicio
+   d. densidade = calcularDensidade(volume_total, tempo_total)
+   e. tut_total = SUM(tut_segundos) de todas as séries
+   f. tempo_descanso_medio = AVG(tempo_descanso_segundos)
+   g. score_intensidade = calcularScoreIntensidade(...)
+3. [NOVO] Atualizar sessao_treino:
+   - data_fim = now()
+   - Todas as métricas calculadas
+4. [NOVO] Exibir resumo da sessão (opcional)
+```
+
+### Fluxo 4: Visualizar Dashboard de Intensidade
+
+```
+1. Usuário navega para tela de Estatísticas
+2. Usuário seleciona aba/seção "Intensidade"
+3. Sistema busca últimas N sessões
+4. Sistema calcula métricas agregadas:
+   - Score médio de intensidade
+   - Tendência de RPE (subindo/descendo)
+   - Tendência de densidade
+   - Comparação com período anterior
+5. Sistema renderiza:
+   - Gauge de score de intensidade
+   - Cards com métricas principais
+   - Gráficos de evolução temporal
+   - Lista de recomendações
+```
+
+## Considerações de Performance
+
+### Otimizações de Banco de Dados
+
+**Índices Recomendados**:
+```sql
+-- Acelerar buscas por sessão
+CREATE INDEX idx_sessao_dia_data ON sessao_treino(dia_id, data_inicio);
+
+-- Acelerar buscas de séries com RPE
+CREATE INDEX idx_series_rpe ON series(exercicio_id, rpe) WHERE rpe IS NOT NULL;
+
+-- Acelerar buscas de configurações
+CREATE INDEX idx_config_exercicio ON configuracoes_exercicio(exercicio_nome);
+```
+
+**Queries Otimizadas**:
+- Usar agregações SQL (AVG, SUM) em vez de calcular no Dart
+- Limitar buscas históricas a períodos relevantes (últimos 30-90 dias)
+- Cache de configurações em memória (SharedPreferences)
+
+### Gerenciamento de Memória
+
+**Cronômetros**:
+- Cancelar timers ao sair da tela
+- Usar apenas um cronômetro ativo por vez
+- Limpar callbacks ao destruir widgets
+
+**Notificações**:
+- Verificar permissões antes de tentar notificar
+- Usar notificações locais (não push)
+- Limitar frequência de notificações
+
+## Configurações Padrão
+
+### Valores Iniciais
+
+```dart
+class IntensityDefaults {
+  static const int tempoDescansoDefault = 90;      // 1min30s
+  static const int tempoDescansoMin = 30;          // 30s
+  static const int tempoDescansoMax = 300;         // 5min
+  
+  static const int tutPorRep = 4;                  // 4s por repetição
+  
+  static const bool cronometroAutomaticoDefault = true;
+  static const bool notificacaoDescansoDefault = true;
+  static const bool usarRPEDefault = true;
+  static const bool usarRIRDefault = false;        // Evitar confusão inicial
+  
+  static const double limiteOvertraining = 9.0;    // RPE médio
+  static const double limiteAlertaTUT = 0.7;       // 70% do sugerido
+}
+```
+
+## Faseamento da Implementação
+
+### Fase 1: MVP (Funcionalidade Básica)
+
+**Escopo**:
+- Adicionar campos RPE/RIR à tabela series
+- Implementar IntensityService (conversões e validações)
+- Adicionar modal de RPE após completar série
+- Exibir RPE médio na SeriesScreen
+
+**Entregáveis**:
+- Migração do banco v5→v6 (campos RPE/RIR)
+- IntensityService com conversões
+- Modal de RPE/RIR
+- Testes de propriedade para conversões
+
+### Fase 2: Cronômetro e TUT
+
+**Escopo**:
+- Implementar RestTimerService
+- Adicionar widget flutuante de cronômetro
+- Implementar TUTService
+- Adicionar botões de TUT na SeriesScreen
+- Salvar tempos no banco
+
+**Entregáveis**:
+- RestTimerService completo
+- TUTService completo
+- Widget de cronômetro flutuante
+- Testes de propriedade para timers
+
+### Fase 3: Análise e Dashboard
+
+**Escopo**:
+- Criar tabela sessao_treino
+- Implementar AnalysisService
+- Calcular densidade e score de intensidade
+- Criar dashboard de intensidade
+- Gráficos de evolução
+
+**Entregáveis**:
+- Tabela sessao_treino
+- AnalysisService completo
+- Dashboard de intensidade
+- Gráficos com fl_chart
+- Testes de propriedade para cálculos agregados
+
+### Fase 4: Configurações e Refinamentos
+
+**Escopo**:
+- Criar tabela configuracoes_exercicio
+- Implementar ConfigService
+- Tela de configurações de intensidade
+- Alertas de overtraining e TUT baixo
+- Sistema de recomendações
+
+**Entregáveis**:
+- ConfigService completo
+- Tela de configurações
+- Sistema de alertas
+- Recomendações inteligentes
+
+## Dependências Externas
+
+### Pacotes Flutter Necessários
+
+**Já Instalados**:
+- `sqflite`: Banco de dados SQLite
+- `shared_preferences`: Configurações do usuário
+- `fl_chart`: Gráficos
+
+**Novos Pacotes Necessários**:
+- `flutter_local_notifications`: Para notificações de descanso
+  ```yaml
+  dependencies:
+    flutter_local_notifications: ^17.0.0
+  ```
+
+**Permissões**:
+- Android: `android.permission.VIBRATE` (para vibração nas notificações)
+- Android: `android.permission.POST_NOTIFICATIONS` (Android 13+)
+- iOS: Configurar notificações no Info.plist
+
+## Diagramas
+
+### Diagrama de Sequência: Completar Série com RPE
+
+```mermaid
+sequenceDiagram
+    participant U as Usuário
+    participant UI as SeriesScreen
+    participant DB as DatabaseService
+    participant IS as IntensityService
+    participant RT as RestTimerService
+    
+    U->>UI: Tapa botão ✓
+    UI->>DB: markSerieAsCompleted(serieId, true)
+    UI->>DB: addLog(exercicio, peso, reps)
+    UI->>UI: Exibir Modal RPE
+    U->>UI: Seleciona RPE 9
+    UI->>IS: converterRPEparaRIR(9)
+    IS-->>UI: RIR = 1
+    UI->>DB: updateSerie(serieId, rpe: 9, rir: 1)
+    UI->>DB: getTempoDescansoAlvo(exercicioNome)
+    DB-->>UI: 90 segundos
+    UI->>RT: iniciarCronometro(90, onTick, onComplete)
+    RT-->>UI: Cronômetro iniciado
+    UI->>U: Exibir widget de cronômetro
+```
+
+### Diagrama de Fluxo: Cálculo de Score de Intensidade
+
+```mermaid
+flowchart TD
+    A[Finalizar Sessão] --> B[Buscar todas as séries da sessão]
+    B --> C[Calcular Volume Total]
+    B --> D[Calcular RPE Médio]
+    B --> E[Calcular Tempo Total]
+    B --> F[Calcular TUT Total]
+    
+    C --> G[Calcular Densidade]
+    E --> G
+    
+    C --> H[Normalizar Métricas]
+    D --> H
+    G --> H
+    F --> H
+    
+    H --> I[Aplicar Pesos]
+    I --> J[Score = Soma Ponderada × 100]
+    J --> K[Clamp entre 0-100]
+    K --> L[Salvar Score na Sessão]
+```
+
+## Referências Técnicas
+
+### Escala RPE
+- Borg RPE Scale: https://www.strongerbyscience.com/rpe/
+- RPE em treinamento de força: escala subjetiva de esforço de 1-10
+- RPE 10 = falha muscular completa
+- RPE 7-9 = zona ideal para hipertrofia
+
+### RIR (Reps in Reserve)
+- Conceito: https://www.strongerbyscience.com/autoregulation/
+- RIR 0 = falha
+- RIR 1-3 = zona ideal para força e hipertrofia
+- Mais intuitivo que RPE para alguns usuários
+
+### Densidade de Treino
+- Fórmula: Volume Total (kg) / Tempo Total (min)
+- Métrica de eficiência do treino
+- Densidade maior = mais trabalho em menos tempo
+- Útil para periodização e progressão
+
+### Time Under Tension (TUT)
+- Tempo total que o músculo está sob carga
+- Importante para hipertrofia
+- Tempo típico: 3-5 segundos por repetição
+- TUT muito baixo pode indicar execução com momentum (menos efetivo)
+

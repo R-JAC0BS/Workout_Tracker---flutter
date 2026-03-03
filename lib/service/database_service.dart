@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import '../models/sessao_treino.dart';
 
 class DatabaseService {
   static Database? _database;
@@ -39,7 +40,7 @@ class DatabaseService {
 
     _database = await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onConfigure: (db) async {
         // Ativa as foreign keys
         await db.execute('PRAGMA foreign_keys = ON');
@@ -81,6 +82,12 @@ class DatabaseService {
             peso REAL,
             repeticoes INTEGER,
             is_completed INTEGER NOT NULL DEFAULT 0,
+            rpe INTEGER,
+            rir INTEGER,
+            tempo_descanso_segundos INTEGER,
+            tut_segundos INTEGER,
+            tempo_inicio TEXT,
+            tempo_fim TEXT,
             FOREIGN KEY (exercicio_id) REFERENCES exercicios(id) ON DELETE CASCADE
           );
         ''');
@@ -94,6 +101,36 @@ class DatabaseService {
             data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );
         ''');
+
+        await db.execute('''
+          CREATE TABLE configuracoes_exercicio (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            exercicio_nome TEXT NOT NULL UNIQUE,
+            tempo_descanso_alvo INTEGER,
+            tut_alvo INTEGER,
+            rpe_alvo INTEGER
+          );
+        ''');
+
+        await db.execute('''
+          CREATE TABLE sessao_treino (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            dia_id INTEGER NOT NULL,
+            data_inicio TEXT NOT NULL,
+            data_fim TEXT,
+            densidade REAL,
+            score_intensidade INTEGER,
+            volume_total REAL,
+            rpe_medio REAL,
+            tut_total INTEGER,
+            tempo_descanso_medio INTEGER,
+            FOREIGN KEY (dia_id) REFERENCES dias(id) ON DELETE CASCADE
+          );
+        ''');
+
+        // Create indexes
+        await db.execute('CREATE INDEX idx_sessao_dia_data ON sessao_treino(dia_id, data_inicio)');
+        await db.execute('CREATE INDEX idx_config_exercicio ON configuracoes_exercicio(exercicio_nome)');
 
         // Pré-popular os 7 dias da semana
         final dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
@@ -142,6 +179,92 @@ class DatabaseService {
             await db.execute('ALTER TABLE dias ADD COLUMN is_cardio INTEGER NOT NULL DEFAULT 0');
           } catch (e) {
             // Coluna já existe
+          }
+        }
+        if (oldVersion < 6) {
+          // Adicionar campos de intensidade à tabela series
+          try {
+            await db.execute('ALTER TABLE series ADD COLUMN rpe INTEGER');
+          } catch (e) {
+            // Coluna já existe
+          }
+          try {
+            await db.execute('ALTER TABLE series ADD COLUMN rir INTEGER');
+          } catch (e) {
+            // Coluna já existe
+          }
+          try {
+            await db.execute('ALTER TABLE series ADD COLUMN tempo_descanso_segundos INTEGER');
+          } catch (e) {
+            // Coluna já existe
+          }
+          try {
+            await db.execute('ALTER TABLE series ADD COLUMN tut_segundos INTEGER');
+          } catch (e) {
+            // Coluna já existe
+          }
+          try {
+            await db.execute('ALTER TABLE series ADD COLUMN tempo_inicio TEXT');
+          } catch (e) {
+            // Coluna já existe
+          }
+          try {
+            await db.execute('ALTER TABLE series ADD COLUMN tempo_fim TEXT');
+          } catch (e) {
+            // Coluna já existe
+          }
+          
+          // Criar tabela de configurações por exercício
+          try {
+            await db.execute('''
+              CREATE TABLE configuracoes_exercicio (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                exercicio_nome TEXT NOT NULL UNIQUE,
+                tempo_descanso_alvo INTEGER,
+                tut_alvo INTEGER,
+                rpe_alvo INTEGER
+              )
+            ''');
+          } catch (e) {
+            // Tabela já existe
+          }
+          
+          // Criar tabela de sessões de treino
+          try {
+            await db.execute('''
+              CREATE TABLE sessao_treino (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                dia_id INTEGER NOT NULL,
+                data_inicio TEXT NOT NULL,
+                data_fim TEXT,
+                densidade REAL,
+                score_intensidade INTEGER,
+                volume_total REAL,
+                rpe_medio REAL,
+                tut_total INTEGER,
+                tempo_descanso_medio INTEGER,
+                FOREIGN KEY (dia_id) REFERENCES dias(id) ON DELETE CASCADE
+              )
+            ''');
+          } catch (e) {
+            // Tabela já existe
+          }
+          
+          // Adicionar índices para otimização de queries
+          try {
+            await db.execute('CREATE INDEX idx_sessao_dia_data ON sessao_treino(dia_id, data_inicio)');
+          } catch (e) {
+            // Índice já existe
+          }
+          try {
+            await db.execute('CREATE INDEX idx_series_rpe ON series(exercicio_id, rpe) WHERE rpe IS NOT NULL');
+          } catch (e) {
+            // Índice já existe
+          }
+          try {
+            await db.execute('CREATE INDEX idx_config_exercicio ON configuracoes_exercicio(exercicio_nome)');
+          } catch (e) {
+            // Índice já existe
           }
         }
       },
@@ -461,5 +584,202 @@ class DatabaseService {
       return result.first['nome'] as String;
     }
     return 'Não definido';
+  }
+
+  // ----------------------
+  // Funções de intensidade (versão 6)
+  // ----------------------
+
+  // Atualizar série com campos de intensidade
+  static Future<int> updateSerieIntensity({
+    required int serieId,
+    int? rpe,
+    int? rir,
+    int? tempoDescansoSegundos,
+    int? tutSegundos,
+    DateTime? tempoInicio,
+    DateTime? tempoFim,
+  }) async {
+    final db = await getDatabase();
+    final Map<String, dynamic> values = {};
+    
+    if (rpe != null) values['rpe'] = rpe;
+    if (rir != null) values['rir'] = rir;
+    if (tempoDescansoSegundos != null) values['tempo_descanso_segundos'] = tempoDescansoSegundos;
+    if (tutSegundos != null) values['tut_segundos'] = tutSegundos;
+    if (tempoInicio != null) values['tempo_inicio'] = tempoInicio.toIso8601String();
+    if (tempoFim != null) values['tempo_fim'] = tempoFim.toIso8601String();
+    
+    if (values.isEmpty) return 0;
+    
+    return await db.update(
+      'series',
+      values,
+      where: 'id = ?',
+      whereArgs: [serieId],
+    );
+  }
+
+  // Salvar configuração de exercício
+  static Future<int> saveConfiguracaoExercicio({
+    required String exercicioNome,
+    int? tempoDescansoAlvo,
+    int? tutAlvo,
+    int? rpeAlvo,
+  }) async {
+    final db = await getDatabase();
+    
+    // Verificar se já existe configuração
+    final existing = await db.query(
+      'configuracoes_exercicio',
+      where: 'exercicio_nome = ?',
+      whereArgs: [exercicioNome],
+    );
+    
+    final Map<String, dynamic> values = {
+      'exercicio_nome': exercicioNome,
+      'tempo_descanso_alvo': tempoDescansoAlvo,
+      'tut_alvo': tutAlvo,
+      'rpe_alvo': rpeAlvo,
+    };
+    
+    if (existing.isNotEmpty) {
+      // Atualizar
+      return await db.update(
+        'configuracoes_exercicio',
+        values,
+        where: 'exercicio_nome = ?',
+        whereArgs: [exercicioNome],
+      );
+    } else {
+      // Inserir
+      return await db.insert('configuracoes_exercicio', values);
+    }
+  }
+
+  // Buscar configuração de exercício
+  static Future<Map<String, dynamic>?> getConfiguracaoExercicio(String exercicioNome) async {
+    final db = await getDatabase();
+    final result = await db.query(
+      'configuracoes_exercicio',
+      where: 'exercicio_nome = ?',
+      whereArgs: [exercicioNome],
+    );
+    
+    if (result.isNotEmpty) {
+      return result.first;
+    }
+    return null;
+  }
+
+  // Criar sessão de treino
+  static Future<int> createSessaoTreino(int diaId) async {
+    final db = await getDatabase();
+    return await db.insert('sessao_treino', {
+      'dia_id': diaId,
+      'data_inicio': DateTime.now().toIso8601String(),
+    });
+  }
+
+  // Finalizar sessão de treino
+  static Future<int> finalizarSessaoTreino({
+    required int sessaoId,
+    required DateTime dataFim,
+    double? densidade,
+    int? scoreIntensidade,
+    double? volumeTotal,
+    double? rpeMedio,
+    int? tutTotal,
+    int? tempoDescansoMedio,
+  }) async {
+    final db = await getDatabase();
+    
+    final Map<String, dynamic> values = {
+      'data_fim': dataFim.toIso8601String(),
+    };
+    
+    if (densidade != null) values['densidade'] = densidade;
+    if (scoreIntensidade != null) values['score_intensidade'] = scoreIntensidade;
+    if (volumeTotal != null) values['volume_total'] = volumeTotal;
+    if (rpeMedio != null) values['rpe_medio'] = rpeMedio;
+    if (tutTotal != null) values['tut_total'] = tutTotal;
+    if (tempoDescansoMedio != null) values['tempo_descanso_medio'] = tempoDescansoMedio;
+    
+    return await db.update(
+      'sessao_treino',
+      values,
+      where: 'id = ?',
+      whereArgs: [sessaoId],
+    );
+  }
+
+  // Buscar sessão ativa de um dia
+  static Future<Map<String, dynamic>?> getSessaoAtiva(int diaId) async {
+    final db = await getDatabase();
+    final result = await db.query(
+      'sessao_treino',
+      where: 'dia_id = ? AND data_fim IS NULL',
+      whereArgs: [diaId],
+      orderBy: 'data_inicio DESC',
+      limit: 1,
+    );
+    
+    if (result.isNotEmpty) {
+      return result.first;
+    }
+    return null;
+  }
+
+  // Buscar sessão ativa de um dia (retorna modelo SessaoTreino)
+  static Future<SessaoTreino?> getSessaoAtivaModel(int diaId) async {
+    final map = await getSessaoAtiva(diaId);
+    if (map != null) {
+      return SessaoTreino.fromMap(map);
+    }
+    return null;
+  }
+
+  // Buscar sessões históricas
+  static Future<List<Map<String, dynamic>>> getSessoesHistoricas({
+    int limit = 10,
+    DateTime? dataInicio,
+    DateTime? dataFim,
+  }) async {
+    final db = await getDatabase();
+    
+    String whereClause = 'data_fim IS NOT NULL';
+    List<dynamic> whereArgs = [];
+    
+    if (dataInicio != null) {
+      whereClause += ' AND data_inicio >= ?';
+      whereArgs.add(dataInicio.toIso8601String());
+    }
+    
+    if (dataFim != null) {
+      whereClause += ' AND data_inicio <= ?';
+      whereArgs.add(dataFim.toIso8601String());
+    }
+    
+    return await db.query(
+      'sessao_treino',
+      where: whereClause,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      orderBy: 'data_inicio DESC',
+      limit: limit,
+    );
+  }
+
+  // Buscar sessões históricas (retorna lista de modelos SessaoTreino)
+  static Future<List<SessaoTreino>> getSessoesHistoricasModel({
+    int limit = 10,
+    DateTime? dataInicio,
+    DateTime? dataFim,
+  }) async {
+    final maps = await getSessoesHistoricas(
+      limit: limit,
+      dataInicio: dataInicio,
+      dataFim: dataFim,
+    );
+    return maps.map((map) => SessaoTreino.fromMap(map)).toList();
   }
 }

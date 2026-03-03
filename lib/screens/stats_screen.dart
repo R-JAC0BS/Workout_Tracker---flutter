@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:workout_tracker/Widget/customAppBar.dart';
 import 'package:workout_tracker/service/log_service.dart';
 import 'package:workout_tracker/screens/exercise_stats_screen.dart';
+import 'package:workout_tracker/screens/intensity_dashboard_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -19,7 +20,6 @@ class _StatsScreenState extends State<StatsScreen> with AutomaticKeepAliveClient
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedGrupo; // Filtro de grupo muscular
-  bool _showTip = true; // Controla se a dica está visível
 
   @override
   void dispose() {
@@ -58,6 +58,15 @@ class _StatsScreenState extends State<StatsScreen> with AutomaticKeepAliveClient
     );
     // Atualiza a lista quando voltar
     _refresh();
+  }
+
+  Future<void> _navigateToIntensityDashboard() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const IntensityDashboardScreen(),
+      ),
+    );
   }
 
   Future<void> _openUrl(String url) async {
@@ -123,97 +132,33 @@ class _StatsScreenState extends State<StatsScreen> with AutomaticKeepAliveClient
               },
             ),
           ),
-          // Caixa de Dica
-          if (_showTip)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color.fromRGBO(249, 115, 22, 100),
-                      Color.fromRGBO(234, 88, 12, 100),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          // Botão de Dashboard de Intensidade
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _navigateToIntensityDashboard,
+                icon: const Icon(Icons.dashboard, color: Colors.white),
+                label: const Text(
+                  'Dashboard de Intensidade',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color.fromRGBO(249, 115, 22, 0.3),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
-                  ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Text(
-                          'Dica',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _showTip = false;
-                            });
-                          },
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'A progressão contínua de carga é essencial para aumentar o ganho de massa muscular, não deixe de evoluir seus pesos',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => _openUrl('https://www.hipertrofia.org/blog/2014/01/20/como-aplicar-progressao-de-cargas-corretamente/'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.2),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          'VER DETALHES',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ),
-          if (_showTip) const SizedBox(height: 16),
+          ),
+          const SizedBox(height: 16),
           // Filtros por grupo muscular
           FutureBuilder<List<String>>(
             future: LogData.getAllGruposWithLogs(),
