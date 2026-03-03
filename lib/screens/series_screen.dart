@@ -744,7 +744,7 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
         Positioned(
           left: 0,
           right: 0,
-          bottom: 0,
+          bottom: 20,
           child: RestTimerWidget(
             tempoAlvoSegundos: _tempoDescansoAlvo,
             onClose: _fecharCronometro,

@@ -785,6 +785,8 @@ class _TrainingWidgetState extends State<TrainingWidget> {
               ),
             ],
           ),
+        
+        const SizedBox(height: 60),
       ],
     );
   }
