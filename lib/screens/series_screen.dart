@@ -6,6 +6,7 @@ import 'package:workout_tracker/service/database_service.dart';
 import 'package:workout_tracker/service/log_service.dart';
 import 'package:workout_tracker/service/analysis_service.dart';
 import 'package:workout_tracker/service/intensity_service.dart';
+import 'package:workout_tracker/screens/exercise_intensity_config_screen.dart';
 
 class SerieScreenWidget extends StatefulWidget {
   final String nome;
@@ -74,7 +75,27 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBarWidget(text: widget.nome),
+      appBar: AppBarWidget(
+        text: widget.nome,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ExerciseIntensityConfigScreen(
+                    exercicioNome: widget.nome,
+                  ),
+                ),
+              );
+              // Recarregar configurações após voltar
+              _carregarTempoDescansoAlvo();
+            },
+            tooltip: 'Configurações de Intensidade',
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           Column(

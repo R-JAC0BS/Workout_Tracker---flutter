@@ -7,7 +7,6 @@ class SessaoTreino {
   final int? scoreIntensidade;       // 0-100
   final double? volumeTotal;         // kg
   final double? rpeMedio;            // 1-10
-  final int? tutTotal;               // segundos
   final int? tempoDescansoMedio;     // segundos
   
   SessaoTreino({
@@ -19,7 +18,6 @@ class SessaoTreino {
     this.scoreIntensidade,
     this.volumeTotal,
     this.rpeMedio,
-    this.tutTotal,
     this.tempoDescansoMedio,
   });
   
@@ -35,7 +33,6 @@ class SessaoTreino {
       scoreIntensidade: map['score_intensidade'] as int?,
       volumeTotal: map['volume_total'] as double?,
       rpeMedio: map['rpe_medio'] as double?,
-      tutTotal: map['tut_total'] as int?,
       tempoDescansoMedio: map['tempo_descanso_medio'] as int?,
     );
   }
@@ -50,7 +47,6 @@ class SessaoTreino {
       'score_intensidade': scoreIntensidade,
       'volume_total': volumeTotal,
       'rpe_medio': rpeMedio,
-      'tut_total': tutTotal,
       'tempo_descanso_medio': tempoDescansoMedio,
     };
   }

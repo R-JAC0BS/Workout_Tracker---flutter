@@ -330,8 +330,8 @@ Este plano implementa o sistema de controle de intensidade em 4 fases incrementa
     - Permitir navegação fácil entre estatísticas e intensidade
     - _Requisitos: US-6.1_
 
-- [ ] 16. Implementar tela de configurações de intensidade
-  - [ ] 16.1 Criar IntensitySettingsScreen
+- [x] 16. Implementar tela de configurações de intensidade
+  - [x] 16.1 Criar IntensitySettingsScreen
     - Toggle para usar RPE
     - Toggle para usar RIR
     - Toggle para cronômetro automático
@@ -340,7 +340,7 @@ Este plano implementa o sistema de controle de intensidade em 4 fases incrementa
     - Salvar configurações usando ConfigService
     - _Requisitos: RT-4_
   
-  - [ ] 16.2 Adicionar configurações por exercício
+  - [x] 16.2 Adicionar configurações por exercício
     - Permitir configurar tempo_descanso_alvo específico
     - Permitir configurar tut_alvo específico
     - Permitir configurar rpe_alvo específico

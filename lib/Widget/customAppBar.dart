@@ -4,11 +4,13 @@ import 'package:workout_tracker/Widget/title.dart';
 class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   final String text;
   final bool showBackButton;
+  final List<Widget>? actions;
 
   const AppBarWidget({
     super.key, 
     required this.text,
     this.showBackButton = true,
+    this.actions,
   });
 
   @override
@@ -27,6 +29,14 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: showBackButton,
       backgroundColor: const Color.fromRGBO(18, 18, 18, 100),
       toolbarHeight: kToolbarHeight + 20,
+      actions: actions != null
+          ? [
+              Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: Row(children: actions!),
+              ),
+            ]
+          : null,
     );
   }
 

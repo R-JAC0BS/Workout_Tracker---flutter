@@ -21,7 +21,6 @@ class ConfigService {
     await DatabaseService.saveConfiguracaoExercicio(
       exercicioNome: exercicioNome,
       tempoDescansoAlvo: segundos,
-      tutAlvo: config?['tut_alvo'] as int?,
       rpeAlvo: config?['rpe_alvo'] as int?,
     );
   }
@@ -35,30 +34,6 @@ class ConfigService {
     return config?['tempo_descanso_alvo'] as int?;
   }
 
-  /// Salva TUT (Time Under Tension) alvo para um exercício específico
-  /// 
-  /// @param exercicioNome Nome do exercício
-  /// @param segundos TUT alvo em segundos
-  static Future<void> salvarTUTAlvo(String exercicioNome, int segundos) async {
-    final config = await DatabaseService.getConfiguracaoExercicio(exercicioNome);
-    
-    await DatabaseService.saveConfiguracaoExercicio(
-      exercicioNome: exercicioNome,
-      tempoDescansoAlvo: config?['tempo_descanso_alvo'] as int?,
-      tutAlvo: segundos,
-      rpeAlvo: config?['rpe_alvo'] as int?,
-    );
-  }
-
-  /// Busca TUT alvo configurado para um exercício
-  /// 
-  /// @param exercicioNome Nome do exercício
-  /// @return TUT em segundos, ou null se não configurado
-  static Future<int?> getTUTAlvo(String exercicioNome) async {
-    final config = await DatabaseService.getConfiguracaoExercicio(exercicioNome);
-    return config?['tut_alvo'] as int?;
-  }
-
   /// Salva RPE (Rate of Perceived Exertion) alvo para um exercício específico
   /// 
   /// @param exercicioNome Nome do exercício
@@ -69,7 +44,6 @@ class ConfigService {
     await DatabaseService.saveConfiguracaoExercicio(
       exercicioNome: exercicioNome,
       tempoDescansoAlvo: config?['tempo_descanso_alvo'] as int?,
-      tutAlvo: config?['tut_alvo'] as int?,
       rpeAlvo: rpe,
     );
   }

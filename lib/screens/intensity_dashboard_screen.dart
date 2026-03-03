@@ -60,18 +60,20 @@ class _IntensityDashboardScreenState extends State<IntensityDashboardScreen> {
       }
 
       final sessaoId = result.first['id'] as int;
+      final diaId = result.first['dia_id'] as int;
       final metricas = await AnalysisService.analisarIntensidadeSessao(sessaoId);
 
-      // Buscar últimas 10 sessões para gráficos
+      // Buscar últimas 10 sessões DO MESMO DIA para gráficos
       final sessoesResult = await db.query(
         'sessao_treino',
-        where: 'data_fim IS NOT NULL',
+        where: 'data_fim IS NOT NULL AND dia_id = ?',
+        whereArgs: [diaId],
         orderBy: 'data_inicio ASC',
         limit: 10,
       );
 
-      // Calcular comparação com últimas 5 sessões
-      final comparacao = await _calcularComparacao(metricas);
+      // Calcular comparação com últimas 5 sessões DO MESMO DIA
+      final comparacao = await _calcularComparacao(metricas, diaId);
 
       // Buscar recomendações
       final recomendacoes = await AnalysisService.gerarRecomendacoes(sessaoId);
@@ -91,13 +93,14 @@ class _IntensityDashboardScreenState extends State<IntensityDashboardScreen> {
     }
   }
 
-  Future<Map<String, dynamic>> _calcularComparacao(Map<String, dynamic> metricasAtuais) async {
+  Future<Map<String, dynamic>> _calcularComparacao(Map<String, dynamic> metricasAtuais, int diaId) async {
     final db = await DatabaseService.getDatabase();
     
-    // Buscar últimas 5 sessões (excluindo a atual)
+    // Buscar últimas 5 sessões DO MESMO DIA (excluindo a atual)
     final sessoesAnteriores = await db.query(
       'sessao_treino',
-      where: 'data_fim IS NOT NULL',
+      where: 'data_fim IS NOT NULL AND dia_id = ?',
+      whereArgs: [diaId],
       orderBy: 'data_inicio DESC',
       limit: 6, // 6 para pegar 5 anteriores (a primeira é a atual)
     );

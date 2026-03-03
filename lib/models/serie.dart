@@ -9,7 +9,6 @@ class Serie {
   final int? rpe;                    // 1-10
   final int? rir;                    // 0-5+
   final int? tempoDescansoSegundos;  // tempo real de descanso
-  final int? tutSegundos;            // tempo sob tensão
   final DateTime? tempoInicio;       // timestamp início da série
   final DateTime? tempoFim;          // timestamp fim da série
   
@@ -22,7 +21,6 @@ class Serie {
     this.rpe,
     this.rir,
     this.tempoDescansoSegundos,
-    this.tutSegundos,
     this.tempoInicio,
     this.tempoFim,
   });
@@ -37,7 +35,6 @@ class Serie {
       rpe: map['rpe'] as int?,
       rir: map['rir'] as int?,
       tempoDescansoSegundos: map['tempo_descanso_segundos'] as int?,
-      tutSegundos: map['tut_segundos'] as int?,
       tempoInicio: map['tempo_inicio'] != null 
         ? DateTime.parse(map['tempo_inicio'] as String) 
         : null,
@@ -57,7 +54,6 @@ class Serie {
       'rpe': rpe,
       'rir': rir,
       'tempo_descanso_segundos': tempoDescansoSegundos,
-      'tut_segundos': tutSegundos,
       'tempo_inicio': tempoInicio?.toIso8601String(),
       'tempo_fim': tempoFim?.toIso8601String(),
     };

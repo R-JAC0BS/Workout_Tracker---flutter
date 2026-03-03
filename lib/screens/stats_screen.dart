@@ -3,6 +3,7 @@ import 'package:workout_tracker/Widget/customAppBar.dart';
 import 'package:workout_tracker/service/log_service.dart';
 import 'package:workout_tracker/screens/exercise_stats_screen.dart';
 import 'package:workout_tracker/screens/intensity_dashboard_screen.dart';
+import 'package:workout_tracker/screens/intensity_settings_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -65,6 +66,15 @@ class _StatsScreenState extends State<StatsScreen> with AutomaticKeepAliveClient
       context,
       MaterialPageRoute(
         builder: (context) => const IntensityDashboardScreen(),
+      ),
+    );
+  }
+
+  Future<void> _navigateToIntensitySettings() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const IntensitySettingsScreen(),
       ),
     );
   }
@@ -135,27 +145,30 @@ class _StatsScreenState extends State<StatsScreen> with AutomaticKeepAliveClient
           // Botão de Dashboard de Intensidade
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _navigateToIntensityDashboard,
-                icon: const Icon(Icons.dashboard, color: Colors.white),
-                label: const Text(
-                  'Dashboard de Intensidade',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _navigateToIntensityDashboard,
+                    icon: const Icon(Icons.dashboard, color: Colors.white),
+                    label: const Text(
+                      'Dashboard',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
