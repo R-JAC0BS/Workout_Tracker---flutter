@@ -503,23 +503,41 @@ class DatabaseService {
     return 0.0;
   }
 
-  // Função para calcular o tempo estimado de treino (2 min por série: 1min30s descanso + 30s execução)
+  // Função para calcular o tempo estimado de treino
+  // Considera tempo de descanso configurado por exercício + 30s de execução por série
   static Future<int> getTempoEstimadoDia(int diaId) async {
     final db = await getDatabase();
     
+    // Buscar todos os exercícios do dia com suas configurações
     final result = await db.rawQuery('''
-      SELECT COUNT(*) as total_series
+      SELECT 
+        exercicios.nome,
+        COUNT(series.id) as num_series,
+        COALESCE(configuracoes_exercicio.tempo_descanso_alvo, 90) as tempo_descanso
       FROM series
       INNER JOIN exercicios ON series.exercicio_id = exercicios.id
       INNER JOIN grupos ON exercicios.grupo_id = grupos.id
+      LEFT JOIN configuracoes_exercicio ON exercicios.nome = configuracoes_exercicio.exercicio_nome
       WHERE grupos.dia_id = ?
+      GROUP BY exercicios.id, exercicios.nome, configuracoes_exercicio.tempo_descanso_alvo
     ''', [diaId]);
     
-    if (result.isNotEmpty && result.first['total_series'] != null) {
-      final totalSeries = result.first['total_series'] as int;
-      return (totalSeries * 2).round(); // 2 minutos por série (1min30s descanso + 30s execução)
+    if (result.isEmpty) {
+      return 0;
     }
-    return 0;
+    
+    int tempoTotalSegundos = 0;
+    for (final row in result) {
+      final numSeries = row['num_series'] as int;
+      final tempoDescanso = row['tempo_descanso'] as int; // em segundos
+      
+      // Tempo por série = tempo de descanso + 30s de execução
+      final tempoPorSerie = tempoDescanso + 30;
+      tempoTotalSegundos += numSeries * tempoPorSerie;
+    }
+    
+    // Converter para minutos e arredondar
+    return (tempoTotalSegundos / 60).round();
   }
 
   // Função para verificar e atualizar o status do dia baseado nas séries

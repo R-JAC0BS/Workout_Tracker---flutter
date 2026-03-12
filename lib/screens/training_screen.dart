@@ -86,7 +86,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
         rpeMedio: rpeMedio > 0 ? rpeMedio : null,
         densidade: densidade > 0 ? densidade : null,
         tutTotal: tutTotal > 0 ? tutTotal : null,
-        tempoDescansoMedio: tempoDescansoMedio > 0 ? tempoDescansoMedio.round() : null,
+        tempoDescansoMedio: tempoDescansoMedio.round(),
         scoreIntensidade: scoreIntensidade,
       );
       

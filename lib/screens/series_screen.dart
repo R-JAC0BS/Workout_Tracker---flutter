@@ -21,6 +21,7 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
   int _refreshKey = 0;
   bool _showRestTimer = false;
   int _tempoDescansoAlvo = 90; // Padrão: 90 segundos
+  int? _ultimaSerieCompletadaId; // ID da última série completada para salvar tempo de descanso
 
   @override
   void initState() {
@@ -50,10 +51,19 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
     });
   }
 
-  void _fecharCronometro() {
+  void _fecharCronometro(int tempoDecorrido) async {
     setState(() {
       _showRestTimer = false;
     });
+    
+    // Salvar tempo de descanso na última série completada
+    if (_ultimaSerieCompletadaId != null && tempoDecorrido > 0) {
+      await DatabaseService.updateSerieIntensity(
+        serieId: _ultimaSerieCompletadaId!,
+        tempoDescansoSegundos: tempoDecorrido,
+      );
+      _ultimaSerieCompletadaId = null; // Resetar após salvar
+    }
   }
 
   Future<void> _addSet() async {
@@ -598,6 +608,9 @@ class _SerieScreenWidgetState extends State<SerieScreenWidget> {
                                                     ),
                                                   );
                                                 }
+                                                
+                                                // Armazenar ID da série completada para salvar tempo de descanso
+                                                _ultimaSerieCompletadaId = serie['id'];
                                                 
                                                 // Iniciar cronômetro automaticamente após completar série
                                                 _iniciarCronometro();

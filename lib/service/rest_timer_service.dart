@@ -234,12 +234,14 @@ class RestTimerService {
         'rest_timer_channel',
         'Cronômetro de Descanso',
         channelDescription: 'Notificações do cronômetro de descanso entre séries',
-        importance: Importance.high,
+        importance: Importance.max,
         priority: Priority.high,
         enableVibration: true,
         playSound: true,
-        sound: const RawResourceAndroidNotificationSound('notification'),
+        // Usar som padrão do sistema
+        sound: null, // null usa o som padrão
         vibrationPattern: Int64List.fromList([0, 500, 250, 500]), // Padrão de vibração
+        ticker: 'Tempo de descanso atingido',
       );
 
       // Configuração da notificação para iOS

@@ -17,8 +17,8 @@ class RestTimerWidget extends StatefulWidget {
   /// Tempo alvo em segundos para o descanso
   final int tempoAlvoSegundos;
   
-  /// Callback chamado quando o widget é fechado
-  final VoidCallback onClose;
+  /// Callback chamado quando o widget é fechado, retorna o tempo decorrido
+  final Function(int tempoDecorrido) onClose;
   
   /// Callback opcional chamado quando o tempo alvo é atingido
   final VoidCallback? onTempoAlvoAtingido;
@@ -85,6 +85,13 @@ class _RestTimerWidgetState extends State<RestTimerWidget>
             if (segundos >= widget.tempoAlvoSegundos && !_tempoAlvoAtingido) {
               _tempoAlvoAtingido = true;
               widget.onTempoAlvoAtingido?.call();
+              
+              // Fechar cronômetro automaticamente após 3 segundos
+              Future.delayed(const Duration(seconds: 3), () {
+                if (mounted) {
+                  _fechar();
+                }
+              });
             }
           });
         }
@@ -114,8 +121,8 @@ class _RestTimerWidgetState extends State<RestTimerWidget>
     // Parar cronômetro
     RestTimerService.pararCronometro();
     
-    // Chamar callback de fechamento
-    widget.onClose();
+    // Chamar callback de fechamento com o tempo decorrido
+    widget.onClose(_segundosDecorridos);
   }
 
   /// Formata segundos para string MM:SS

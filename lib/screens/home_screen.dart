@@ -751,7 +751,7 @@ class _TrainingWidgetState extends State<TrainingWidget> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => IntensityDashboardScreen(),
+                        builder: (context) => IntensityDashboardScreen(diaId: _diaSelecionado),
                       ),
                     );
                   },

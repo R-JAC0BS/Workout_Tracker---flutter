@@ -14,7 +14,9 @@ import 'package:workout_tracker/service/database_service.dart';
 /// - TUT total
 /// - Tempo de descanso médio
 class IntensityDashboardScreen extends StatefulWidget {
-  const IntensityDashboardScreen({super.key});
+  final int? diaId;
+  
+  const IntensityDashboardScreen({super.key, this.diaId});
 
   @override
   State<IntensityDashboardScreen> createState() => _IntensityDashboardScreenState();
@@ -43,13 +45,21 @@ class _IntensityDashboardScreenState extends State<IntensityDashboardScreen> {
     try {
       final db = await DatabaseService.getDatabase();
       
-      // Buscar a última sessão finalizada
-      final result = await db.query(
-        'sessao_treino',
-        where: 'data_fim IS NOT NULL',
-        orderBy: 'data_inicio DESC',
-        limit: 1,
-      );
+      // Buscar a última sessão finalizada do dia específico (se fornecido) ou geral
+      final result = widget.diaId != null
+          ? await db.query(
+              'sessao_treino',
+              where: 'data_fim IS NOT NULL AND dia_id = ?',
+              whereArgs: [widget.diaId],
+              orderBy: 'data_inicio DESC',
+              limit: 1,
+            )
+          : await db.query(
+              'sessao_treino',
+              where: 'data_fim IS NOT NULL',
+              orderBy: 'data_inicio DESC',
+              limit: 1,
+            );
 
       if (result.isEmpty) {
         setState(() {
@@ -169,7 +179,7 @@ class _IntensityDashboardScreenState extends State<IntensityDashboardScreen> {
     final rpeAtual = metricasAtuais['rpe_medio'] as double;
     final densidadeAtual = metricasAtuais['densidade'] as double;
     final tutAtual = (metricasAtuais['tut_total'] as int).toDouble();
-    final descansoAtual = metricasAtuais['tempo_descanso_medio'] as double;
+    final descansoAtual = (metricasAtuais['tempo_descanso_medio'] as num).toDouble();
     final scoreAtual = (metricasAtuais['score_intensidade'] as int).toDouble();
 
     return {
@@ -249,7 +259,7 @@ class _IntensityDashboardScreenState extends State<IntensityDashboardScreen> {
     final rpeMedio = _metricas!['rpe_medio'] as double;
     final densidade = _metricas!['densidade'] as double;
     final tutTotal = _metricas!['tut_total'] as int;
-    final tempoDescansoMedio = _metricas!['tempo_descanso_medio'] as double;
+    final tempoDescansoMedio = (_metricas!['tempo_descanso_medio'] as num).toDouble();
 
     return RefreshIndicator(
       onRefresh: _carregarDados,
@@ -1030,7 +1040,7 @@ class _IntensityDashboardScreenState extends State<IntensityDashboardScreen> {
     final sessoesComDescanso = _sessoesHistoricas
         .where((s) => 
           s['tempo_descanso_medio'] != null && 
-          (s['tempo_descanso_medio'] as double) > 0)
+          (s['tempo_descanso_medio'] as num).toDouble() > 0)
         .toList();
 
     if (sessoesComDescanso.isEmpty) {
